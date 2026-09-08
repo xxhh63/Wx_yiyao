@@ -1,13 +1,21 @@
 server:
-  port: 80
-
+  port: ${PORT:80}
+  error:
+    include-message: never
+    include-stacktrace: never
 
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${MYSQL_ADDRESS}/${MYSQL_DATABASE:springboot_demo}
+    url: jdbc:mysql://${MYSQL_ADDRESS}/${MYSQL_DATABASE}?characterEncoding=UTF-8&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
     username: ${MYSQL_USERNAME}
     password: ${MYSQL_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+      connection-timeout: 5000
+  sql:
+    init:
+      mode: never
   mvc:
     view:
       suffix: .html
@@ -15,3 +23,11 @@ spring:
 
 mybatis:
   mapper-locations: classpath*:mapper/*Mapper.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    arg-name-based-constructor-auto-mapping: true
+
+app:
+  wechat:
+    appid: ${WECHAT_APPID:}
+    trusted-ingress: ${WECHAT_TRUSTED_INGRESS:false}

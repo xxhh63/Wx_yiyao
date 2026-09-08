@@ -1,5 +1,6 @@
 package com.tencent.wxcloudrun.controller;
 
+import org.springframework.context.annotation.Profile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.tencent.wxcloudrun.config.ApiResponse;
@@ -19,6 +20,7 @@ import java.util.List;
 /**
  * counter控制器
  */
+@Profile("demo")
 @RestController
 
 public class CounterController {
