@@ -3,38 +3,27 @@ package com.tencent.wxcloudrun.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.tencent.wxcloudrun.config.ApiResponse;
 import com.tencent.wxcloudrun.config.WechatIdentityResolver;
-import com.tencent.wxcloudrun.dao.ProfileMapper;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import com.tencent.wxcloudrun.service.ProfileService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-
 @RestController
+@ConditionalOnProperty(name = "app.mode", havingValue = "mini", matchIfMissing = true)
 public class ProfileController {
   private final WechatIdentityResolver identity;
   private final ProfileService profiles;
-  private final ProfileMapper mapper;
 
-  public ProfileController(WechatIdentityResolver identity, ProfileService profiles, ProfileMapper mapper) {
+  public ProfileController(WechatIdentityResolver identity, ProfileService profiles) {
     this.identity = identity;
     this.profiles = profiles;
-    this.mapper = mapper;
+
   }
 
   @ModelAttribute
   public void preventCaching(HttpServletResponse response) {
     response.setHeader("Cache-Control", "no-store");
-  }
-
-  @GetMapping("/api/health")
-  public ApiResponse health() { return ApiResponse.ok(Map.of("status", "UP", "service", "yiyao-backend")); }
-
-  @GetMapping("/api/ready")
-  public ApiResponse ready() {
-    mapper.ping();
-    return ApiResponse.ok(Map.of("status", "UP", "database", "UP"));
   }
 
   @PostMapping("/api/auth/session")

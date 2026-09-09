@@ -31,6 +31,21 @@ public class ApiExceptionHandler {
     return ResponseEntity.status(404).body(ApiResponse.error(404, "接口不存在"));
   }
 
+  @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+  public ResponseEntity<ApiResponse> uploadTooLarge() {
+    return ResponseEntity.status(413).body(ApiResponse.error(413, "图片不能超过 5MB"));
+  }
+
+  @ExceptionHandler(org.springframework.web.multipart.support.MissingServletRequestPartException.class)
+  public ResponseEntity<ApiResponse> missingFile() {
+    return ResponseEntity.badRequest().body(ApiResponse.error(400, "请选择要上传的图片"));
+  }
+
+  @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+  public ResponseEntity<ApiResponse> unsupportedMethod() {
+    return ResponseEntity.status(405).body(ApiResponse.error(405, "请求方法不支持"));
+  }
+
   @ExceptionHandler(DataAccessException.class)
   public ResponseEntity<ApiResponse> database(DataAccessException error) {
     // Do not log SQL bindings, connection URLs, credentials, or card contents.

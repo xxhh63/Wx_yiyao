@@ -2,6 +2,7 @@ package com.tencent.wxcloudrun.config;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
@@ -9,6 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Collections;
 
 @Component
+@ConditionalOnProperty(name = "app.mode", havingValue = "mini", matchIfMissing = true)
 public class WechatIdentityResolver {
   private final String appid;
   private final boolean trustedIngress;

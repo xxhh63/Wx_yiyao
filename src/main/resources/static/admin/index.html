@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>骊珠 · 内容管理</title>
+  <link rel="stylesheet" href="/admin/admin.css">
+  <script src="/admin/admin.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到主要内容</a>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">骊</span><div>骊珠科创<span>内容管理平台</span></div></div>
+      <p class="nav-caption">内容工作台</p>
+      <nav aria-label="管理菜单" id="navigation">
+        <button data-tab="featured" class="nav-item active" aria-current="page"><span aria-hidden="true">01</span>首页主推</button>
+        <button data-tab="promos" class="nav-item"><span aria-hidden="true">02</span>广告管理</button>
+        <button data-tab="policies" class="nav-item"><span aria-hidden="true">03</span>政策资讯</button>
+        <button data-tab="resources" class="nav-item"><span aria-hidden="true">04</span>资源管理</button>
+        <button data-tab="institutions" class="nav-item"><span aria-hidden="true">05</span>机构管理</button>
+        <button data-tab="stats" class="nav-item"><span aria-hidden="true">06</span>数据概览</button>
+        <button data-tab="audit" class="nav-item"><span aria-hidden="true">07</span>操作记录</button>
+      </nav>
+      <div class="sidebar-note"><span class="online-dot"></span>让内容连接产业价值<p>统一维护 · 按需发布</p></div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar"><span>骊珠科创 <span class="muted">/ 管理工作台</span></span><div class="account"><span id="username">待登录</span><button id="logout" class="text-button" type="button" hidden>退出登录</button></div></header>
+      <main id="main" tabindex="-1">
+        <div class="page-heading"><div><p class="eyebrow">CONTENT WORKSPACE</p><h1 id="page-title">首页主推</h1><p class="page-description" id="page-description">选择优质资源，管理首页推荐内容与展示顺序。</p></div><button id="new-item" class="primary-button" type="button">＋ 新建主推</button></div>
+        <div id="page-message" class="message" role="status" aria-live="polite" hidden></div>
+        <section class="content-card" aria-label="内容列表">
+          <form id="search-form" class="toolbar"><label class="search-field"><span class="sr-only">搜索内容</span><input id="keyword" type="search" maxlength="100" placeholder="搜索标题、名称或关键词"></label><button class="secondary-button" type="submit">搜索</button><button class="text-button" id="refresh" type="button">刷新</button><span id="result-count" class="result-count"></span></form>
+          <div id="list-content" aria-live="polite"><div class="empty-state">请先登录管理工作台</div></div>
+          <div id="pagination" class="pagination" hidden><span id="page-label"></span><div><button id="previous-page" class="secondary-button" type="button">上一页</button><button id="next-page" class="secondary-button" type="button">下一页</button></div></div>
+        </section>
+        <p class="page-footnote">内容修改与发布均保留操作记录。数据概览按在架资源条目统计。</p>
+      </main>
+    </div>
+  </div>
+  <dialog id="login-dialog" class="login-dialog" aria-labelledby="login-title">
+    <div class="login-brand"><span class="brand-mark" aria-hidden="true">骊</span><span>骊珠科创</span></div>
+    <p class="eyebrow">WELCOME BACK</p><h2 id="login-title">登录内容工作台</h2><p class="muted">使用管理员账号维护平台内容。</p>
+    <form id="login-form">
+      <label class="field">管理员账号<input id="login-username" name="username" autocomplete="username" required maxlength="120"></label>
+      <label class="field">密码<input id="login-password" name="password" type="password" autocomplete="current-password" required></label>
+      <p id="login-error" class="message error" role="alert" hidden></p>
+      <button id="login-submit" class="primary-button" type="submit">登录工作台</button>
+    </form>
+    <p class="login-note">账号由平台管理员配置，不提供公开注册。</p>
+  </dialog>
+  <dialog id="editor-dialog" class="editor-dialog" aria-labelledby="editor-title">
+    <form id="editor-form">
+      <header class="dialog-header"><div><p class="eyebrow">CONTENT EDITOR</p><h2 id="editor-title">编辑内容</h2></div><button id="close-editor" type="button" class="secondary-button">关闭</button></header>
+      <div class="editor-body"><div id="publication-notice" class="message notice" hidden></div><fieldset id="editor-fields" aria-label="内容编辑字段"></fieldset><div id="editor-error" class="message error" role="alert" hidden></div><button id="reload-editor" class="secondary-button" type="button" hidden>重新载入服务器版本</button></div>
+      <footer class="dialog-footer"><span id="editor-status" class="muted">新内容保存为草稿</span><div><button id="preview-editor" class="secondary-button" type="button">预览当前内容</button><button id="save-editor" class="primary-button" type="submit">保存内容</button></div></footer>
+    </form>
+  </dialog>
+  <dialog id="preview-dialog" class="preview-dialog" aria-labelledby="preview-title"><header class="dialog-header"><div><p class="eyebrow">CONTENT PREVIEW</p><h2 id="preview-title">内容预览</h2></div><button id="close-preview" type="button" class="secondary-button">关闭预览</button></header><div id="preview-content" class="preview-body"></div></dialog>
+  <noscript>管理工作台需要启用 JavaScript。</noscript>
+</body>
+</html>

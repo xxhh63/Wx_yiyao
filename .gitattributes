@@ -1,0 +1,5 @@
+migration/*.json text eol=lf
+migration/*.sql text eol=lf
+src/main/resources/catalog-schema.json text eol=lf
+src/main/resources/migration/*.sql text eol=lf
+*.png binary

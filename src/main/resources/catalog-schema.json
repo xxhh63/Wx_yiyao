@@ -1,0 +1,2113 @@
+{
+  "pool": {
+    "categories": [
+      {
+        "value": "all",
+        "label": "全部"
+      },
+      {
+        "value": "project",
+        "label": "项目"
+      }
+    ],
+    "filtersByCategory": {
+      "all": [
+        {
+          "key": "sort",
+          "label": "排序方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "default",
+              "label": "默认排序"
+            },
+            {
+              "value": "newest",
+              "label": "最新发布"
+            }
+          ]
+        },
+        {
+          "key": "kind",
+          "label": "供需类型",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "demand",
+              "label": "需求"
+            },
+            {
+              "value": "supply",
+              "label": "供给"
+            }
+          ]
+        },
+        {
+          "key": "industry",
+          "label": "技术领域",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "生物医药",
+              "label": "生物医药"
+            },
+            {
+              "value": "高端装备",
+              "label": "高端装备"
+            },
+            {
+              "value": "新材料",
+              "label": "新材料"
+            },
+            {
+              "value": "新能源",
+              "label": "新能源"
+            },
+            {
+              "value": "节能环保",
+              "label": "节能环保"
+            },
+            {
+              "value": "新一代信息技术",
+              "label": "新一代信息技术"
+            },
+            {
+              "value": "综合交叉",
+              "label": "综合交叉"
+            }
+          ]
+        },
+        {
+          "key": "cooperation",
+          "label": "合作方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "投资合作",
+              "label": "投资合作"
+            },
+            {
+              "value": "联合研发",
+              "label": "联合研发"
+            },
+            {
+              "value": "技术转让",
+              "label": "技术转让"
+            },
+            {
+              "value": "技术许可",
+              "label": "技术许可"
+            },
+            {
+              "value": "产业合作",
+              "label": "产业合作"
+            },
+            {
+              "value": "成果转化",
+              "label": "成果转化"
+            }
+          ]
+        }
+      ],
+      "project": [
+        {
+          "key": "sort",
+          "label": "排序方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "default",
+              "label": "默认排序"
+            },
+            {
+              "value": "newest",
+              "label": "最新发布"
+            }
+          ]
+        },
+        {
+          "key": "kind",
+          "label": "供需类型",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "demand",
+              "label": "需求"
+            },
+            {
+              "value": "supply",
+              "label": "供给"
+            }
+          ]
+        },
+        {
+          "key": "industry",
+          "label": "技术领域",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "生物医药",
+              "label": "生物医药"
+            },
+            {
+              "value": "高端装备",
+              "label": "高端装备"
+            },
+            {
+              "value": "新材料",
+              "label": "新材料"
+            },
+            {
+              "value": "新能源",
+              "label": "新能源"
+            },
+            {
+              "value": "节能环保",
+              "label": "节能环保"
+            },
+            {
+              "value": "新一代信息技术",
+              "label": "新一代信息技术"
+            },
+            {
+              "value": "综合交叉",
+              "label": "综合交叉"
+            }
+          ]
+        },
+        {
+          "key": "cooperation",
+          "label": "合作方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "投资合作",
+              "label": "投资合作"
+            },
+            {
+              "value": "联合研发",
+              "label": "联合研发"
+            },
+            {
+              "value": "技术转让",
+              "label": "技术转让"
+            },
+            {
+              "value": "技术许可",
+              "label": "技术许可"
+            },
+            {
+              "value": "产业合作",
+              "label": "产业合作"
+            },
+            {
+              "value": "成果转化",
+              "label": "成果转化"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "investor": {
+    "categories": [
+      {
+        "value": "all",
+        "label": "全部"
+      },
+      {
+        "value": "project",
+        "label": "项目"
+      },
+      {
+        "value": "mah",
+        "label": "MAH"
+      },
+      {
+        "value": "scene",
+        "label": "场景"
+      }
+    ],
+    "filtersByCategory": {
+      "all": [
+        {
+          "key": "sort",
+          "label": "排序方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "default",
+              "label": "默认排序"
+            },
+            {
+              "value": "newest",
+              "label": "最新发布"
+            }
+          ]
+        }
+      ],
+      "project": [
+        {
+          "key": "sort",
+          "label": "排序方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "default",
+              "label": "默认排序"
+            },
+            {
+              "value": "newest",
+              "label": "时间最新"
+            }
+          ]
+        },
+        {
+          "key": "projectType",
+          "label": "项目类型",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "早期创新药项目",
+              "label": "早期创新药项目"
+            },
+            {
+              "value": "仿制药项目",
+              "label": "仿制药项目"
+            },
+            {
+              "value": "改良型新药项目",
+              "label": "改良型新药项目"
+            },
+            {
+              "value": "中药创新项目",
+              "label": "中药创新项目"
+            },
+            {
+              "value": "原料药/API 项目",
+              "label": "原料药/API 项目"
+            },
+            {
+              "value": "医疗器械项目",
+              "label": "医疗器械项目"
+            },
+            {
+              "value": "特医食品项目",
+              "label": "特医食品项目"
+            },
+            {
+              "value": "其他项目",
+              "label": "其他项目"
+            }
+          ]
+        },
+        {
+          "key": "researchStage",
+          "label": "最高研发阶段",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "未申报临床",
+              "label": "未申报临床"
+            },
+            {
+              "value": "申报临床",
+              "label": "申报临床"
+            },
+            {
+              "value": "1期临床",
+              "label": "1期临床"
+            },
+            {
+              "value": "2期临床",
+              "label": "2期临床"
+            },
+            {
+              "value": "3期临床",
+              "label": "3期临床"
+            },
+            {
+              "value": "申请上市",
+              "label": "申请上市"
+            },
+            {
+              "value": "批准上市",
+              "label": "批准上市"
+            }
+          ]
+        },
+        {
+          "key": "indication",
+          "field": "indications",
+          "label": "适应症赛道",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "肿瘤疾病",
+              "label": "肿瘤疾病"
+            },
+            {
+              "value": "自身免疫与炎症",
+              "label": "自身免疫与炎症"
+            },
+            {
+              "value": "代谢与内分泌疾病",
+              "label": "代谢与内分泌疾病"
+            },
+            {
+              "value": "神经系统疾病",
+              "label": "神经系统疾病"
+            },
+            {
+              "value": "抗感染领域",
+              "label": "抗感染领域"
+            },
+            {
+              "value": "心血管系统",
+              "label": "心血管系统"
+            },
+            {
+              "value": "呼吸科疾病",
+              "label": "呼吸科疾病"
+            },
+            {
+              "value": "肾脏泌尿",
+              "label": "肾脏泌尿"
+            },
+            {
+              "value": "消化科",
+              "label": "消化科"
+            },
+            {
+              "value": "妇科/生殖医学",
+              "label": "妇科/生殖医学"
+            },
+            {
+              "value": "儿科",
+              "label": "儿科"
+            },
+            {
+              "value": "眼科",
+              "label": "眼科"
+            },
+            {
+              "value": "皮肤科",
+              "label": "皮肤科"
+            },
+            {
+              "value": "罕见病",
+              "label": "罕见病"
+            },
+            {
+              "value": "中医药特色适应症",
+              "label": "中医药特色适应症"
+            },
+            {
+              "value": "其他适应症",
+              "label": "其他适应症"
+            }
+          ]
+        }
+      ],
+      "mah": [
+        {
+          "key": "sort",
+          "label": "排序方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "default",
+              "label": "默认排序"
+            },
+            {
+              "value": "newest",
+              "label": "最新发布"
+            }
+          ]
+        },
+        {
+          "key": "mahType",
+          "label": "MAH类型",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "化学药制剂 MAH 批件",
+              "label": "化学药制剂 MAH 批件"
+            },
+            {
+              "value": "生物药制剂 MAH 批件",
+              "label": "生物药制剂 MAH 批件"
+            },
+            {
+              "value": "中药 MAH 批件",
+              "label": "中药 MAH 批件"
+            },
+            {
+              "value": "医疗器械注册证",
+              "label": "医疗器械注册证"
+            },
+            {
+              "value": "特医食品注册证",
+              "label": "特医食品注册证"
+            },
+            {
+              "value": "化学原料药批准证书",
+              "label": "化学原料药批准证书"
+            }
+          ]
+        },
+        {
+          "key": "approvalStatus",
+          "label": "批件状态",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "已获批在效期内",
+              "label": "已获批在效期内"
+            },
+            {
+              "value": "批件待恢复激活",
+              "label": "批件待恢复激活"
+            },
+            {
+              "value": "受托生产工厂已匹配",
+              "label": "受托生产工厂已匹配"
+            },
+            {
+              "value": "其他状态",
+              "label": "其他状态"
+            }
+          ]
+        },
+        {
+          "key": "tradeMode",
+          "label": "交易模式",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "MAH 转让",
+              "label": "MAH 转让"
+            },
+            {
+              "value": "股权并购",
+              "label": "股权并购"
+            },
+            {
+              "value": "部分权益转让",
+              "label": "部分权益转让"
+            },
+            {
+              "value": "受托生产合作",
+              "label": "受托生产合作"
+            },
+            {
+              "value": "产品授权许可（License-in/out）",
+              "label": "产品授权许可（License-in/out）"
+            },
+            {
+              "value": "其他合作模式",
+              "label": "其他合作模式"
+            }
+          ]
+        }
+      ],
+      "scene": [
+        {
+          "key": "sort",
+          "label": "排序方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "default",
+              "label": "默认排序"
+            },
+            {
+              "value": "newest",
+              "label": "最新发布"
+            }
+          ]
+        },
+        {
+          "key": "sceneType",
+          "label": "场景业态",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "疗愈空间",
+              "label": "疗愈空间"
+            },
+            {
+              "value": "临床终端",
+              "label": "临床终端"
+            },
+            {
+              "value": "社区康养医养场景",
+              "label": "社区康养医养场景"
+            },
+            {
+              "value": "文旅疗愈度假场景",
+              "label": "文旅疗愈度假场景"
+            },
+            {
+              "value": "消费医疗场景",
+              "label": "消费医疗场景"
+            },
+            {
+              "value": "科研转化示范场景",
+              "label": "科研转化示范场景"
+            },
+            {
+              "value": "中医药特色服务场景",
+              "label": "中医药特色服务场景"
+            },
+            {
+              "value": "其他业态场景",
+              "label": "其他业态场景"
+            }
+          ]
+        },
+        {
+          "key": "maturity",
+          "label": "落地成熟度",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "概念规划阶段",
+              "label": "概念规划阶段"
+            },
+            {
+              "value": "试点验证阶段",
+              "label": "试点验证阶段"
+            },
+            {
+              "value": "小范围运营",
+              "label": "小范围运营"
+            },
+            {
+              "value": "规模化可复制",
+              "label": "规模化可复制"
+            },
+            {
+              "value": "存量资产盘活",
+              "label": "存量资产盘活"
+            },
+            {
+              "value": "其他阶段",
+              "label": "其他阶段"
+            }
+          ]
+        },
+        {
+          "key": "investmentMode",
+          "label": "投资模式",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "股权投资",
+              "label": "股权投资"
+            },
+            {
+              "value": "联合共建",
+              "label": "联合共建"
+            },
+            {
+              "value": "品牌授权输出",
+              "label": "品牌授权输出"
+            },
+            {
+              "value": "渠道落地合作",
+              "label": "渠道落地合作"
+            },
+            {
+              "value": "加盟扩张",
+              "label": "加盟扩张"
+            },
+            {
+              "value": "其他合作模式",
+              "label": "其他合作模式"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "enterprise": {
+    "categories": [
+      {
+        "value": "all",
+        "label": "全部"
+      },
+      {
+        "value": "talent",
+        "label": "人才"
+      },
+      {
+        "value": "technology",
+        "label": "技术"
+      },
+      {
+        "value": "patent",
+        "label": "专利"
+      },
+      {
+        "value": "mah",
+        "label": "MAH"
+      },
+      {
+        "value": "data",
+        "label": "数据"
+      },
+      {
+        "value": "service",
+        "label": "服务机构"
+      }
+    ],
+    "filtersByCategory": {
+      "all": [
+        {
+          "key": "sort",
+          "label": "排序方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "default",
+              "label": "默认排序"
+            },
+            {
+              "value": "newest",
+              "label": "最新发布"
+            }
+          ]
+        }
+      ],
+      "talent": [
+        {
+          "key": "sort",
+          "label": "排序方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "default",
+              "label": "默认排序"
+            },
+            {
+              "value": "newest",
+              "label": "最新发布"
+            }
+          ]
+        },
+        {
+          "key": "talentType",
+          "label": "人才类型",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "首席科学家",
+              "label": "首席科学家"
+            },
+            {
+              "value": "研发型人才",
+              "label": "研发型人才"
+            },
+            {
+              "value": "工艺开发负责人",
+              "label": "工艺开发负责人"
+            },
+            {
+              "value": "临床负责人",
+              "label": "临床负责人"
+            },
+            {
+              "value": "投融资产业专家",
+              "label": "投融资产业专家"
+            },
+            {
+              "value": "商业化运营人才",
+              "label": "商业化运营人才"
+            }
+          ]
+        },
+        {
+          "key": "talentMaturity",
+          "label": "人才成熟度",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "资深专家",
+              "label": "资深专家"
+            },
+            {
+              "value": "初级从业者",
+              "label": "初级从业者"
+            }
+          ]
+        },
+        {
+          "key": "cooperationMode",
+          "label": "合作模式",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "全职",
+              "label": "全职"
+            },
+            {
+              "value": "项目制",
+              "label": "项目制"
+            },
+            {
+              "value": "技术顾问",
+              "label": "技术顾问"
+            }
+          ]
+        }
+      ],
+      "technology": [
+        {
+          "key": "sort",
+          "label": "排序方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "default",
+              "label": "默认排序"
+            },
+            {
+              "value": "newest",
+              "label": "最新发布"
+            }
+          ]
+        },
+        {
+          "key": "industry",
+          "field": "industries",
+          "label": "技术领域",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "生物医药",
+              "label": "生物医药"
+            },
+            {
+              "value": "高端装备",
+              "label": "高端装备"
+            },
+            {
+              "value": "新材料",
+              "label": "新材料"
+            },
+            {
+              "value": "新能源",
+              "label": "新能源"
+            },
+            {
+              "value": "节能环保",
+              "label": "节能环保"
+            },
+            {
+              "value": "新一代信息技术",
+              "label": "新一代信息技术"
+            },
+            {
+              "value": "综合交叉",
+              "label": "综合交叉"
+            }
+          ]
+        },
+        {
+          "key": "technologyMaturity",
+          "label": "技术成熟度",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "理论阶段",
+              "label": "理论阶段"
+            },
+            {
+              "value": "小试",
+              "label": "小试"
+            },
+            {
+              "value": "中试",
+              "label": "中试"
+            },
+            {
+              "value": "工业化",
+              "label": "工业化"
+            },
+            {
+              "value": "可直接投产",
+              "label": "可直接投产"
+            }
+          ]
+        },
+        {
+          "key": "cooperationMode",
+          "label": "合作模式",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "技术转让",
+              "label": "技术转让"
+            },
+            {
+              "value": "技术授权",
+              "label": "技术授权"
+            },
+            {
+              "value": "技术许可",
+              "label": "技术许可"
+            },
+            {
+              "value": "技术入股",
+              "label": "技术入股"
+            },
+            {
+              "value": "联合研发",
+              "label": "联合研发"
+            }
+          ]
+        }
+      ],
+      "patent": [
+        {
+          "key": "patentType",
+          "label": "专利类型",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "发明专利",
+              "label": "发明专利"
+            },
+            {
+              "value": "实用新型专利",
+              "label": "实用新型专利"
+            },
+            {
+              "value": "软著",
+              "label": "软著"
+            }
+          ]
+        },
+        {
+          "key": "patentField",
+          "label": "专利领域",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "药物化学",
+              "label": "药物化学"
+            },
+            {
+              "value": "原料药",
+              "label": "原料药"
+            },
+            {
+              "value": "生物药",
+              "label": "生物药"
+            },
+            {
+              "value": "中药",
+              "label": "中药"
+            },
+            {
+              "value": "医疗器械技术",
+              "label": "医疗器械技术"
+            },
+            {
+              "value": "特医食品",
+              "label": "特医食品"
+            },
+            {
+              "value": "临床与用途",
+              "label": "临床与用途"
+            },
+            {
+              "value": "数字化与配套技术",
+              "label": "数字化与配套技术"
+            },
+            {
+              "value": "其他专利领域",
+              "label": "其他专利领域"
+            }
+          ]
+        },
+        {
+          "key": "patentStatus",
+          "label": "专利状态",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "有效授权",
+              "label": "有效授权"
+            },
+            {
+              "value": "实质审查中",
+              "label": "实质审查中"
+            },
+            {
+              "value": "即将过期",
+              "label": "即将过期"
+            }
+          ]
+        },
+        {
+          "key": "cooperationMode",
+          "label": "合作模式",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "专利全权转让",
+              "label": "专利全权转让"
+            },
+            {
+              "value": "独占许可",
+              "label": "独占许可"
+            },
+            {
+              "value": "排他许可",
+              "label": "排他许可"
+            },
+            {
+              "value": "技术入股",
+              "label": "技术入股"
+            },
+            {
+              "value": "专项授权使用",
+              "label": "专项授权使用"
+            }
+          ]
+        }
+      ],
+      "mah": [
+        {
+          "key": "sort",
+          "label": "排序方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "default",
+              "label": "默认排序"
+            },
+            {
+              "value": "newest",
+              "label": "最新发布"
+            }
+          ]
+        },
+        {
+          "key": "mahType",
+          "label": "MAH类型",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "化学药制剂 MAH 批件",
+              "label": "化学药制剂 MAH 批件"
+            },
+            {
+              "value": "生物药制剂 MAH 批件",
+              "label": "生物药制剂 MAH 批件"
+            },
+            {
+              "value": "中药 MAH 批件",
+              "label": "中药 MAH 批件"
+            },
+            {
+              "value": "医疗器械注册证",
+              "label": "医疗器械注册证"
+            },
+            {
+              "value": "特医食品注册证",
+              "label": "特医食品注册证"
+            },
+            {
+              "value": "化学原料药批准证书",
+              "label": "化学原料药批准证书"
+            }
+          ]
+        },
+        {
+          "key": "approvalStatus",
+          "label": "批件状态",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "有效期内可直接生产",
+              "label": "有效期内可直接生产"
+            },
+            {
+              "value": "已完成工艺验证",
+              "label": "已完成工艺验证"
+            },
+            {
+              "value": "可委托生产",
+              "label": "可委托生产"
+            },
+            {
+              "value": "闲置文号盘活",
+              "label": "闲置文号盘活"
+            },
+            {
+              "value": "可快速落地上市",
+              "label": "可快速落地上市"
+            }
+          ]
+        },
+        {
+          "key": "tradeMode",
+          "label": "交易模式",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "MAH 转让",
+              "label": "MAH 转让"
+            },
+            {
+              "value": "股权并购",
+              "label": "股权并购"
+            },
+            {
+              "value": "部分权益转让",
+              "label": "部分权益转让"
+            },
+            {
+              "value": "受托生产合作",
+              "label": "受托生产合作"
+            },
+            {
+              "value": "产品授权许可（License-in/out）",
+              "label": "产品授权许可（License-in/out）"
+            },
+            {
+              "value": "其他合作模式",
+              "label": "其他合作模式"
+            }
+          ]
+        }
+      ],
+      "data": [
+        {
+          "key": "sort",
+          "label": "排序方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "default",
+              "label": "默认排序"
+            },
+            {
+              "value": "newest",
+              "label": "最新发布"
+            }
+          ]
+        },
+        {
+          "key": "dataType",
+          "label": "数据类型",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "临床研究数据",
+              "label": "临床研究数据"
+            },
+            {
+              "value": "真实世界RWD数据",
+              "label": "真实世界RWD数据"
+            },
+            {
+              "value": "患者病程数据",
+              "label": "患者病程数据"
+            },
+            {
+              "value": "医院诊疗数据",
+              "label": "医院诊疗数据"
+            },
+            {
+              "value": "药品销售终端数据",
+              "label": "药品销售终端数据"
+            },
+            {
+              "value": "其他数据",
+              "label": "其他数据"
+            }
+          ]
+        },
+        {
+          "key": "complianceMaturity",
+          "label": "合规成熟度",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "已脱敏合规",
+              "label": "已脱敏合规"
+            },
+            {
+              "value": "可商用授权",
+              "label": "可商用授权"
+            },
+            {
+              "value": "仅限研究使用",
+              "label": "仅限研究使用"
+            }
+          ]
+        },
+        {
+          "key": "cooperationMode",
+          "label": "合作模式",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "数据永久授权",
+              "label": "数据永久授权"
+            },
+            {
+              "value": "单次项目调取",
+              "label": "单次项目调取"
+            }
+          ]
+        }
+      ],
+      "service": [
+        {
+          "key": "sort",
+          "label": "排序方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "default",
+              "label": "默认排序"
+            },
+            {
+              "value": "newest",
+              "label": "最新发布"
+            }
+          ]
+        },
+        {
+          "key": "serviceType",
+          "label": "服务类型",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "CRO服务",
+              "label": "CRO服务"
+            },
+            {
+              "value": "CDMO服务",
+              "label": "CDMO服务"
+            },
+            {
+              "value": "骊珠整体解决方案",
+              "label": "骊珠整体解决方案"
+            },
+            {
+              "value": "工商财税",
+              "label": "工商财税"
+            },
+            {
+              "value": "法律",
+              "label": "法律"
+            },
+            {
+              "value": "知识产权",
+              "label": "知识产权"
+            }
+          ]
+        },
+        {
+          "key": "qualification",
+          "label": "机构资质",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "具备正规资质",
+              "label": "具备正规资质"
+            },
+            {
+              "value": "百强产业机构",
+              "label": "百强产业机构"
+            },
+            {
+              "value": "丰富落地案例",
+              "label": "丰富落地案例"
+            },
+            {
+              "value": "可全国服务",
+              "label": "可全国服务"
+            }
+          ]
+        },
+        {
+          "key": "cooperationMode",
+          "label": "合作模式",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "单项项目外包",
+              "label": "单项项目外包"
+            },
+            {
+              "value": "年度框架合作",
+              "label": "年度框架合作"
+            },
+            {
+              "value": "专项定制服务",
+              "label": "专项定制服务"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "scientist": {
+    "categories": [
+      {
+        "value": "all",
+        "label": "全部"
+      },
+      {
+        "value": "talent",
+        "label": "人才"
+      },
+      {
+        "value": "technology",
+        "label": "技术"
+      },
+      {
+        "value": "patent",
+        "label": "专利"
+      },
+      {
+        "value": "data",
+        "label": "数据"
+      },
+      {
+        "value": "finance",
+        "label": "投融资",
+        "pending": true
+      },
+      {
+        "value": "service",
+        "label": "服务机构"
+      }
+    ],
+    "filtersByCategory": {
+      "all": [
+        {
+          "key": "sort",
+          "label": "排序方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "default",
+              "label": "默认排序"
+            },
+            {
+              "value": "newest",
+              "label": "最新发布"
+            }
+          ]
+        }
+      ],
+      "talent": [
+        {
+          "key": "sort",
+          "label": "排序方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "default",
+              "label": "默认排序"
+            },
+            {
+              "value": "newest",
+              "label": "最新发布"
+            }
+          ]
+        },
+        {
+          "key": "talentType",
+          "label": "人才类型",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "临床负责人",
+              "label": "临床负责人"
+            },
+            {
+              "value": "投融资产业专家",
+              "label": "投融资产业专家"
+            },
+            {
+              "value": "商业化运营人才",
+              "label": "商业化运营人才"
+            }
+          ]
+        },
+        {
+          "key": "talentMaturity",
+          "label": "人才成熟度",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "资深专家",
+              "label": "资深专家"
+            },
+            {
+              "value": "初级从业者",
+              "label": "初级从业者"
+            }
+          ]
+        },
+        {
+          "key": "cooperationMode",
+          "label": "合作模式",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "全职",
+              "label": "全职"
+            },
+            {
+              "value": "项目制",
+              "label": "项目制"
+            },
+            {
+              "value": "技术顾问",
+              "label": "技术顾问"
+            }
+          ]
+        }
+      ],
+      "technology": [
+        {
+          "key": "sort",
+          "label": "排序方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "default",
+              "label": "默认排序"
+            },
+            {
+              "value": "newest",
+              "label": "最新发布"
+            }
+          ]
+        },
+        {
+          "key": "technologyField",
+          "label": "技术领域",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "药物化学",
+              "label": "药物化学"
+            },
+            {
+              "value": "原料药",
+              "label": "原料药"
+            },
+            {
+              "value": "生物药",
+              "label": "生物药"
+            },
+            {
+              "value": "中药",
+              "label": "中药"
+            },
+            {
+              "value": "医疗器械技术",
+              "label": "医疗器械技术"
+            },
+            {
+              "value": "特医食品",
+              "label": "特医食品"
+            },
+            {
+              "value": "临床与用途",
+              "label": "临床与用途"
+            },
+            {
+              "value": "数字化与配套技术",
+              "label": "数字化与配套技术"
+            },
+            {
+              "value": "其他专利领域",
+              "label": "其他专利领域"
+            }
+          ]
+        },
+        {
+          "key": "technologyMaturity",
+          "label": "技术成熟度",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "理论阶段",
+              "label": "理论阶段"
+            },
+            {
+              "value": "小试",
+              "label": "小试"
+            },
+            {
+              "value": "中试",
+              "label": "中试"
+            },
+            {
+              "value": "工业化",
+              "label": "工业化"
+            },
+            {
+              "value": "可直接投产",
+              "label": "可直接投产"
+            }
+          ]
+        },
+        {
+          "key": "cooperationMode",
+          "label": "合作模式",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "技术转让",
+              "label": "技术转让"
+            },
+            {
+              "value": "技术授权",
+              "label": "技术授权"
+            },
+            {
+              "value": "技术许可",
+              "label": "技术许可"
+            },
+            {
+              "value": "技术入股",
+              "label": "技术入股"
+            },
+            {
+              "value": "联合研发",
+              "label": "联合研发"
+            }
+          ]
+        }
+      ],
+      "patent": [
+        {
+          "key": "patentType",
+          "label": "专利类型",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "发明专利",
+              "label": "发明专利"
+            },
+            {
+              "value": "实用新型专利",
+              "label": "实用新型专利"
+            },
+            {
+              "value": "软著",
+              "label": "软著"
+            }
+          ]
+        },
+        {
+          "key": "patentField",
+          "label": "专利领域",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "药物化学",
+              "label": "药物化学"
+            },
+            {
+              "value": "原料药",
+              "label": "原料药"
+            },
+            {
+              "value": "生物药",
+              "label": "生物药"
+            },
+            {
+              "value": "中药",
+              "label": "中药"
+            },
+            {
+              "value": "医疗器械技术",
+              "label": "医疗器械技术"
+            },
+            {
+              "value": "特医食品",
+              "label": "特医食品"
+            },
+            {
+              "value": "临床与用途",
+              "label": "临床与用途"
+            },
+            {
+              "value": "数字化与配套技术",
+              "label": "数字化与配套技术"
+            },
+            {
+              "value": "其他专利领域",
+              "label": "其他专利领域"
+            }
+          ]
+        },
+        {
+          "key": "patentStatus",
+          "label": "专利状态",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "有效授权",
+              "label": "有效授权"
+            },
+            {
+              "value": "实质审查中",
+              "label": "实质审查中"
+            },
+            {
+              "value": "即将过期",
+              "label": "即将过期"
+            }
+          ]
+        },
+        {
+          "key": "cooperationMode",
+          "label": "合作模式",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "专利全权转让",
+              "label": "专利全权转让"
+            },
+            {
+              "value": "独占许可",
+              "label": "独占许可"
+            },
+            {
+              "value": "排他许可",
+              "label": "排他许可"
+            },
+            {
+              "value": "技术入股",
+              "label": "技术入股"
+            },
+            {
+              "value": "专项授权使用",
+              "label": "专项授权使用"
+            }
+          ]
+        }
+      ],
+      "data": [
+        {
+          "key": "sort",
+          "label": "排序方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "default",
+              "label": "默认排序"
+            },
+            {
+              "value": "newest",
+              "label": "最新发布"
+            }
+          ]
+        },
+        {
+          "key": "dataType",
+          "label": "数据类型",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "早期研发数据",
+              "label": "早期研发数据"
+            },
+            {
+              "value": "临床前全套数据",
+              "label": "临床前全套数据"
+            },
+            {
+              "value": "其他数据",
+              "label": "其他数据"
+            }
+          ]
+        },
+        {
+          "key": "complianceMaturity",
+          "label": "合规成熟度",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "已脱敏合规",
+              "label": "已脱敏合规"
+            },
+            {
+              "value": "可商用授权",
+              "label": "可商用授权"
+            },
+            {
+              "value": "仅限研究使用",
+              "label": "仅限研究使用"
+            }
+          ]
+        },
+        {
+          "key": "cooperationMode",
+          "label": "合作模式",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "数据永久授权",
+              "label": "数据永久授权"
+            },
+            {
+              "value": "单次项目调取",
+              "label": "单次项目调取"
+            }
+          ]
+        }
+      ],
+      "finance": [],
+      "service": [
+        {
+          "key": "sort",
+          "label": "排序方式",
+          "index": 0,
+          "options": [
+            {
+              "value": "default",
+              "label": "默认排序"
+            },
+            {
+              "value": "newest",
+              "label": "最新发布"
+            }
+          ]
+        },
+        {
+          "key": "serviceType",
+          "label": "服务类型",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "CRO服务",
+              "label": "CRO服务"
+            },
+            {
+              "value": "CDMO服务",
+              "label": "CDMO服务"
+            },
+            {
+              "value": "骊珠整体解决方案",
+              "label": "骊珠整体解决方案"
+            },
+            {
+              "value": "工商财税",
+              "label": "工商财税"
+            },
+            {
+              "value": "法律",
+              "label": "法律"
+            },
+            {
+              "value": "知识产权",
+              "label": "知识产权"
+            }
+          ]
+        },
+        {
+          "key": "qualification",
+          "label": "机构资质",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "具备正规资质",
+              "label": "具备正规资质"
+            },
+            {
+              "value": "百强产业机构",
+              "label": "百强产业机构"
+            },
+            {
+              "value": "丰富落地案例",
+              "label": "丰富落地案例"
+            },
+            {
+              "value": "可全国服务",
+              "label": "可全国服务"
+            }
+          ]
+        },
+        {
+          "key": "cooperationMode",
+          "label": "合作模式",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "单项项目外包",
+              "label": "单项项目外包"
+            },
+            {
+              "value": "年度框架合作",
+              "label": "年度框架合作"
+            },
+            {
+              "value": "专项定制服务",
+              "label": "专项定制服务"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "manager": {
+    "categories": [
+      {
+        "value": "achievement",
+        "label": "成果"
+      }
+    ],
+    "filtersByCategory": {
+      "achievement": [
+        {
+          "key": "achievementType",
+          "label": "成果类型",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "专利包",
+              "label": "专利包"
+            },
+            {
+              "value": "纯专利权利",
+              "label": "纯专利权利"
+            },
+            {
+              "value": "技术成果",
+              "label": "技术成果"
+            }
+          ]
+        },
+        {
+          "key": "technicalTrack",
+          "label": "技术赛道",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "小分子药物",
+              "label": "小分子药物"
+            },
+            {
+              "value": "大分子生物药",
+              "label": "大分子生物药"
+            },
+            {
+              "value": "中药",
+              "label": "中药"
+            },
+            {
+              "value": "医疗器械",
+              "label": "医疗器械"
+            },
+            {
+              "value": "特医食品",
+              "label": "特医食品"
+            },
+            {
+              "value": "临床与用途",
+              "label": "临床与用途"
+            },
+            {
+              "value": "数字化与配套技术",
+              "label": "数字化与配套技术"
+            },
+            {
+              "value": "其他技术领域",
+              "label": "其他技术领域"
+            }
+          ]
+        },
+        {
+          "key": "achievementMaturity",
+          "label": "成果成熟度",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "实验室小试阶段",
+              "label": "实验室小试阶段"
+            },
+            {
+              "value": "中试已验证",
+              "label": "中试已验证"
+            },
+            {
+              "value": "工业化可放大",
+              "label": "工业化可放大"
+            },
+            {
+              "value": "仅专利授权",
+              "label": "仅专利授权"
+            },
+            {
+              "value": "专利即将到期",
+              "label": "专利即将到期"
+            },
+            {
+              "value": "存量成熟可直接转化落地",
+              "label": "存量成熟可直接转化落地"
+            }
+          ]
+        },
+        {
+          "key": "cooperationMode",
+          "label": "合作模式",
+          "index": 0,
+          "options": [
+            {
+              "value": "all",
+              "label": "全部"
+            },
+            {
+              "value": "技术转让",
+              "label": "技术转让"
+            },
+            {
+              "value": "技术授权",
+              "label": "技术授权"
+            },
+            {
+              "value": "技术许可",
+              "label": "技术许可"
+            },
+            {
+              "value": "技术入股",
+              "label": "技术入股"
+            },
+            {
+              "value": "联合研发",
+              "label": "联合研发"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

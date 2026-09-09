@@ -5,6 +5,14 @@ server:
     include-stacktrace: never
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.session.SessionAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://${MYSQL_ADDRESS}/${MYSQL_DATABASE}?characterEncoding=UTF-8&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true
@@ -28,6 +36,10 @@ mybatis:
     arg-name-based-constructor-auto-mapping: true
 
 app:
+  mode: ${APP_MODE:mini}
+  admin:
+    username: ${ADMIN_USERNAME:}
+    password-hash: ${ADMIN_PASSWORD_HASH:}
   wechat:
     appid: ${WECHAT_APPID:}
     trusted-ingress: ${WECHAT_TRUSTED_INGRESS:false}
