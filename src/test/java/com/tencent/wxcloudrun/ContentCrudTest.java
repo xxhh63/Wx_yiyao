@@ -187,6 +187,60 @@ class ContentCrudTest {
         .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.code").value(400));
   }
 
+
+  @Test void adminResourceListsFollowRoleAndCategoryWithoutLosingDrafts() throws Exception {
+    var input=resource(); input.putArray("views").addObject().put("audience","investor").put("category","project").put("sortOrder",17);
+    var created=create("resources",input);
+    var query=Map.of("audience","investor","category","project","keyword",actor,"pageSize","1");
+    var result=json.valueToTree(service.list("resources",query,true));
+    assertEquals(1,result.path("total").asInt());
+    assertEquals(created.path("id"),result.path("items").get(0).path("id"));
+    assertEquals("DRAFT",result.path("items").get(0).path("publicationStatus").asText());
+    assertEquals(17,result.path("items").get(0).path("viewSortOrder").asInt());
+    assertEquals(0,json.valueToTree(service.list("resources",query,false)).path("total").asInt());
+    assertEquals(0,json.valueToTree(service.list("resources",Map.of("audience","investor","category","mah","keyword",actor),true)).path("total").asInt());
+    assertEquals(0,json.valueToTree(service.list("resources",Map.of("audience","enterprise","category","all","keyword",actor),true)).path("total").asInt());
+    assertEquals(400,assertThrows(ResponseStatusException.class,()->service.list("resources",Map.of("audience","investor","category","patent"),true)).getStatusCode().value());
+  }
+
+  @Test void optionalFiltersAcrossEveryRoleCanBeBlankAndMatchOnlyWhenFilled() throws Exception {
+    for(String audience:List.of("investor","enterprise","scientist","manager")) {
+      var catalog=service.catalog(audience);
+      for(var category:catalog.path("categories")) {
+        String type=category.path("value").asText();
+        if(type.equals("all")||category.path("pending").asBoolean())continue;
+        var input=resource().put("title",actor+" "+audience+" "+type).put("resourceType",type);
+        input.putArray("industries");input.putArray("cooperationModes");input.putObject("attributes");
+        input.putArray("views").addObject().put("audience",audience).put("category",type);
+        var saved=publish("resources",create("resources",input),"PUBLISHED");
+        var query=new HashMap<>(Map.of("audience",audience,"category",type,"keyword",input.path("title").asText()));
+        assertEquals(1,json.valueToTree(service.list("resources",query,false)).path("total").asInt(),audience+"/"+type+" must show without optional filters");
+        String firstKey=null, firstValue=null;
+        for(var filter:catalog.path("filtersByCategory").path(type)) {
+          String key=filter.path("key").asText();if(key.equals("sort"))continue;
+          String option=filter.path("options").get(1).path("value").asText();
+          query.put(key,option);
+          assertEquals(0,json.valueToTree(service.list("resources",query,false)).path("total").asInt(),audience+"/"+type+" blank "+key);
+          if(firstKey==null){firstKey=key;firstValue=option;}
+          var edit=saved.deepCopy();String field=filter.path("field").asText(key);
+          if(field.equals("industries")||field.equals("cooperationModes"))edit.putArray(field).add(option);
+          else if(field.equals("indications"))((ObjectNode)edit.path("attributes")).putArray(field).add(option);
+          else ((ObjectNode)edit.path("attributes")).put(field,option);
+          edit=service.save("resources",saved.path("id").asText(),edit,actor);
+          assertEquals(1,json.valueToTree(service.list("resources",query,false)).path("total").asInt(),audience+"/"+type+" filled "+key);
+          if(!key.equals(firstKey)) {
+            query.put(firstKey,firstValue);
+            assertEquals(0,json.valueToTree(service.list("resources",query,false)).path("total").asInt(),"filters must remain AND combined");
+            query.remove(firstKey);
+          }
+          var reset=saved.deepCopy().put("version",edit.path("version").asLong());
+          saved=service.save("resources",saved.path("id").asText(),reset,actor);
+          query.remove(key);
+        }
+      }
+    }
+  }
+
   private ObjectNode create(String collection,ObjectNode input){return assertDoesNotThrow(()->service.save(collection,null,input,actor));}
   private ObjectNode publish(String collection,ObjectNode item,String status){return assertDoesNotThrow(()->service.publication(collection,item.path("id").asText(),json.createObjectNode().put("status",status).put("version",item.path("version").asLong()),actor));}
   private ObjectNode node(String value)throws Exception{return (ObjectNode)json.readTree(value);}

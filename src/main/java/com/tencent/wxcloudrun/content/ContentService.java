@@ -56,7 +56,7 @@ public class ContentService {
     StringBuilder where=new StringBuilder(admin?"1=1":"c.publication_status='PUBLISHED'");
     Set<String> allowed=new HashSet<>(Set.of("page","pageSize","keyword","sort"));
     String order="c.sort_order,c.id";
-    if(collection.equals("resources")&&!admin) {
+    if(collection.equals("resources")&&(!admin||query.containsKey("audience"))) {
       allowed.addAll(Set.of("audience","category"));
       String audience=query.get("audience"),category=query.getOrDefault("category","all");
       var filters=schema.filters(audience,category);
@@ -130,10 +130,10 @@ public class ContentService {
         var resource=store.one("resources",item.path("resourceId").asText(),false);
         if(resource!=null)item.put("resourceTitle",resource.path("title").asText()).put("title",resource.path("title").asText());
       }
-      if(collection.equals("resources")&&!admin) {
+      if(collection.equals("resources")&&query.containsKey("audience")) {
         String a=query.get("audience");
         for(var v:store.views(item.path("id").asText()))if(v.get("audience").equals(a)) {
-          item.put("category",v.get("category").toString());item.put("sortOrder",((Number)v.get("sortOrder")).intValue());
+          item.put("category",v.get("category").toString());item.put(admin?"viewSortOrder":"sortOrder",((Number)v.get("sortOrder")).intValue());
           item.put("legacyId",v.get("legacyId").toString());
         }
       }

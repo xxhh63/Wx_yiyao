@@ -3,9 +3,10 @@ const policyCategories = ['科技创新', '成果转化', '知识产权', '产�
 function allowedViewCategories(catalogs, audience, resourceType) {
   return (catalogs[audience]?.categories || []).filter(category => !category.pending && category.value === resourceType).map(category => [category.value, category.label]);
 }
-function listQuery(collection, { page, pageSize, keyword = '' }) {
+function listQuery(collection, { page, pageSize, keyword = '', resourceAudience = '', resourceCategory = '' }) {
   const query = new URLSearchParams({ page, pageSize });
   if (collection !== 'audit') query.set('keyword', keyword);
+  if (collection === 'resources' && resourceAudience) { query.set('audience', resourceAudience); query.set('category', resourceCategory || 'all'); }
   return query.toString();
 }function splitList(value) { return [...new Set(String(value || '').split(/[,，;；\n]/).map(item => item.trim()).filter(Boolean))]; }
 function sectionParagraphs(value) { return String(value || '').split(/\r?\n/).map(item => item.trim()).filter(Boolean); }
@@ -28,16 +29,44 @@ function attributeDefinitions(catalogs, resourceType) {
   }
   return [...definitions.values()];
 }
-if (typeof module !== 'undefined' && module.exports) module.exports = { splitList, sectionParagraphs, safeImageUrl, attributeDefinitions, policyCategories, allowedViewCategories, listQuery };
+
+const resourceRoles = [['investor', '投资人'], ['enterprise', '企业'], ['scientist', '科学家/科研院所'], ['manager', '技术经理人']];
+function resourceCategories(catalogs, audience) {
+  return (catalogs[audience]?.categories || []).filter(category => category.value !== 'all' && !category.pending);
+}
+function resourceFilters(catalogs, audience, category) {
+  return (catalogs[audience]?.filtersByCategory?.[category] || []).filter(filter => filter.key !== 'sort').map(filter => {
+    const field = filter.field || ({industry:'industries', cooperation:'cooperationModes'}[filter.key]) || filter.key;
+    return { field, label:filter.label || field, storage:['industries','cooperationModes','kind'].includes(field) ? 'root' : 'attributes', multiple:['industries','cooperationModes','indications'].includes(field), options:(filter.options || []).map(option => typeof option === 'string' ? {value:option,label:option} : option).filter(option => option.value && option.value !== 'all') };
+  });
+}
+function resourceSelection(catalogs, item, preferred) {
+  const views=item.views || [];
+  const first=views.find(view => view.audience === preferred) || views.find(view => resourceRoles.some(([key]) => key === view.audience)) || views[0];
+  const audience=first?.audience || (resourceCategories(catalogs, preferred).some(c => !item.resourceType || c.value === item.resourceType) ? preferred : resourceRoles.find(([key]) => resourceCategories(catalogs,key).some(c => !item.resourceType || c.value === item.resourceType))?.[0]) || 'investor';
+  return { audience, category:first?.category || item.resourceType || resourceCategories(catalogs,audience)[0]?.value };
+}
+function resourcePayload(catalogs, item, type, edits) {
+  const allowed=new Set(attributeDefinitions(catalogs,type).map(definition => definition.field));
+  const values={...(type === item.resourceType ? item.attributes : {}), ...edits};
+  return Object.fromEntries(Object.entries(values).filter(([field]) => allowed.has(field)));
+}
+
+function resourceViewSelection(views, audience, category, previousAudience, retainPrevious) {
+  const next=views.filter(view=>view.category === category && (retainPrevious || view.audience !== previousAudience || view.audience === audience)).map(view=>({...view}));
+  if(!next.some(view=>view.audience === audience))next.push({audience,category,sortOrder:0});
+  return next;
+}
+if (typeof module !== 'undefined' && module.exports) module.exports = { splitList, sectionParagraphs, safeImageUrl, attributeDefinitions, policyCategories, allowedViewCategories, listQuery, resourceCategories, resourceFilters, resourceSelection, resourcePayload, resourceViewSelection };
 if (typeof document !== 'undefined') {
   const $ = id => document.getElementById(id);
   const names = { featured: '首页主推', promos: '广告管理', policies: '政策资讯', resources: '资源管理', institutions: '机构管理', stats: '数据概览', audit: '操作记录' };
   const singular = { featured: '主推', promos: '广告', policies: '资讯', resources: '资源', institutions: '机构' };
-  const descriptions = { featured: '选择优质资源，管理首页推荐内容与展示顺序。', promos: '维护移动广告的文案、视觉和内容跳转。', policies: '维护资讯正文与来源，让每一次发布都有据可查。', resources: '统一管理产业资源，维护分类信息及专区展示。', institutions: '维护机构介绍、服务领域与图片资料。', stats: '实时读取在架资源数量，了解平台内容构成。', audit: '查看内容变更、发布与下架的操作记录。' };
+  const descriptions = { featured: '选择优质资源，管理首页推荐内容与展示顺序。', promos: '维护移动广告的文案、视觉和内容跳转。', policies: '维护资讯正文与来源，让每一次发布都有据可查。', resources: '按角色模块维护资源，选择二级分类后补充可选筛选信息。', institutions: '维护机构介绍、服务领域与图片资料。', stats: '实时读取在架资源数量，了解平台内容构成。', audit: '查看内容变更、发布与下架的操作记录。' };
   const audiences = [['pool', '骊珠要素'], ['investor', '投资人专区'], ['enterprise', '企业专区'], ['scientist', '科研专区'], ['manager', '技术经理人专区']];
   const resourceTypes = [['project', '项目'], ['mah', 'MAH'], ['scene', '场景'], ['talent', '人才'], ['technology', '技术'], ['patent', '专利'], ['data', '数据'], ['service', '服务'], ['achievement', '成果']];
   const tones = [['medical', '医药青绿'], ['cyber', '科技蓝'], ['material', '材料暖金'], ['robot', '智能蓝'], ['energy', '能源绿'], ['network', '互联蓝'], ['lab', '实验室青'], ['build', '产业灰蓝'], ['car', '装备蓝'], ['bio', '生物绿'], ['mint', '薄荷绿'], ['blue', '明亮蓝'], ['aqua', '水青色'], ['navy', '深蓝']];
-  const state = { tab: 'featured', page: 1, pageSize: 20, keyword: '', total: 0, listSequence: 0, editorSequence: 0, catalogs: {}, session: null, editor: null, uploads: 0 };
+  const state = { tab: 'featured', page: 1, pageSize: 20, keyword: '', total: 0, listSequence: 0, editorSequence: 0, catalogs: {}, session: null, editor: null, uploads: 0, resourceAudience: 'investor', resourceCategory: 'all' };
   let controlId = 0;
   function el(tag, className, text) { const node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = String(text); return node; }
   function button(text, className, action) { const node = el('button', className || 'secondary-button', text); node.type = 'button'; if (action) node.addEventListener('click', action); return node; }
@@ -82,6 +111,7 @@ if (typeof document !== 'undefined') {
     document.querySelectorAll('[data-tab]').forEach(node => { const selected = node.dataset.tab === tab; node.classList.toggle('active', selected); if (selected) node.setAttribute('aria-current', 'page'); else node.removeAttribute('aria-current'); });
     $('page-title').textContent = names[tab]; $('page-description').textContent = descriptions[tab]; $('new-item').hidden = !singular[tab]; $('new-item').textContent = '＋ 新建' + (singular[tab] || '');
     $('search-form').hidden = tab === 'stats'; $('keyword').closest('label').hidden = tab === 'audit'; $('keyword').disabled = tab === 'audit'; $('search-form').querySelector('[type=submit]').hidden = tab === 'audit'; $('search-form').querySelector('[type=submit]').disabled = tab === 'audit';
+    $('resource-navigation').hidden = tab !== 'resources';
     $('list-content').replaceChildren(el('div', 'empty-state', '正在读取内容…')); loadList();
   }
   $('navigation').addEventListener('click', event => { const item = event.target.closest('[data-tab]'); if (item) selectTab(item.dataset.tab); });
@@ -94,6 +124,7 @@ if (typeof document !== 'undefined') {
     const sequence = ++state.listSequence, tab = state.tab;
     message($('page-message'), ''); $('list-content').setAttribute('aria-busy', 'true'); $('refresh').disabled = true;
     try {
+      if (tab === 'resources') { await ensureCatalogs(); if (sequence !== state.listSequence) return; renderResourceNavigation(); }
       if (tab === 'stats') { const data = await api('stats'); if (sequence === state.listSequence) renderStats(data); return; }
       const data = await api(tab + '?' + listQuery(tab, state));
       if (sequence !== state.listSequence) return;
@@ -110,6 +141,26 @@ if (typeof document !== 'undefined') {
     }
     finally { if (sequence === state.listSequence) { $('list-content').setAttribute('aria-busy', 'false'); $('refresh').disabled = false; } }
   }
+
+  function renderResourceNavigation() {
+    const host=$('resource-navigation'); host.replaceChildren(); host.hidden=state.tab !== 'resources';
+    const roles=el('div','resource-role-tabs'); roles.setAttribute('aria-label','资源角色模块');
+    const choose=(audience,category) => {state.resourceAudience=audience; state.resourceCategory=category; state.page=1; loadList();};
+    for(const [key,label] of resourceRoles) {
+      const tab=button(label,'role-button',()=>choose(key, state.catalogs[key].filtersByCategory.all ? 'all' : resourceCategories(state.catalogs,key)[0].value));
+      tab.classList.toggle('active',state.resourceAudience === key);tab.setAttribute('aria-pressed',String(state.resourceAudience === key));roles.append(tab);
+    }
+    const all=button('查看全部资源（含首页及项目池）','text-button',()=>choose('',''));
+    all.setAttribute('aria-pressed',String(!state.resourceAudience));host.append(roles,all);
+    if(!state.resourceAudience)return;
+    const categories=el('div','resource-category-tabs');categories.setAttribute('aria-label','资源二级分类');
+    for(const category of state.catalogs[state.resourceAudience].categories) {
+      const tab=button(category.label+(category.pending?'（暂未开放）':''),'category-button',()=>choose(state.resourceAudience,category.value));
+      tab.disabled=!!category.pending;tab.classList.toggle('active',state.resourceCategory === category.value);tab.setAttribute('aria-pressed',String(state.resourceCategory === category.value));categories.append(tab);
+    }
+    host.append(categories);
+  }
+
   function renderTable(tab, items) {
     const host = $('list-content'); host.replaceChildren();
     if (!items.length) { const empty = el('div', 'empty-state'); empty.append(el('strong', '', state.keyword ? '没有找到匹配内容' : '这里还没有内容'), el('span', '', state.keyword ? '试试其他关键词，或清空搜索条件。' : tab === 'audit' ? '后续的内容操作会显示在这里。' : '点击右上角新建，开始维护平台内容。')); host.append(empty); return; }
@@ -125,7 +176,7 @@ if (typeof document !== 'undefined') {
         const status = el('td'); status.append(badge(item.publicationStatus)); const actions = el('td'), actionBar = el('div', 'row-actions');
         actionBar.append(button('编辑', 'text-button', () => openEditor(tab, item.id)), button('预览', 'text-button', () => previewSaved(tab, item.id)));
         const publish = button(item.publicationStatus === 'PUBLISHED' ? '下架' : '发布', item.publicationStatus === 'PUBLISHED' ? 'danger-button' : 'secondary-button', () => changePublication(tab, item, publish)); actionBar.append(publish); actions.append(actionBar);
-        row.append(title, status, el('td', '', item.sortOrder ?? 0), actions);
+        row.append(title, status, el('td', '', item.viewSortOrder ?? item.sortOrder ?? 0), actions);
       }
       body.append(row);
     }
@@ -166,7 +217,7 @@ if (typeof document !== 'undefined') {
   async function openEditor(collection, id) {
     if (!canDiscard()) return; const sequence = ++state.editorSequence; message($('page-message'), '');
     try {
-      const [item] = await Promise.all([id ? api(`${collection}/${encodeURIComponent(id)}`) : Promise.resolve({ publicationStatus: 'DRAFT', sortOrder: 0 }), collection === 'resources' ? ensureCatalogs() : Promise.resolve()]);
+      const [item] = await Promise.all([id ? api(`${collection}/${encodeURIComponent(id)}`) : Promise.resolve({ publicationStatus: 'DRAFT', sortOrder: 0, ...(collection === 'resources' && state.tab === 'resources' && state.resourceAudience && state.resourceCategory !== 'all' ? {resourceType:state.resourceCategory} : {}) }), collection === 'resources' ? ensureCatalogs() : Promise.resolve()]);
       if (sequence !== state.editorSequence) return;
       state.editor = { collection, item, dirty: false, busy: false }; renderEditor(); state.editor.dirty = false;
       if (!$('editor-dialog').open) $('editor-dialog').showModal();
@@ -190,15 +241,16 @@ if (typeof document !== 'undefined') {
     if (collection !== 'featured') renderSections(host, item.sections || []);
   }
   function renderResource(host, item) {
+    const classification = el('div'); host.append(classification);
     const grid = group(host, '资源信息');
     field(grid, '资源标题', 'title', item.title, { required: true, maxLength: 120, full: true }); field(grid, '摘要', 'summary', item.summary, { type: 'textarea', maxLength: 500, full: true });
-    field(grid, '资源类型', 'resourceType', item.resourceType || 'project', { choices: resourceTypes }); field(grid, '供需类型', 'kind', item.kind || 'supply', { choices: [['supply', '供给'], ['demand', '需求']] });
+    field(grid, '供需类型', 'kind', item.kind || 'supply', { choices: [['supply', '供给'], ['demand', '需求']] });
     field(grid, '发布方身份', 'publisherRole', item.publisherRole || 'platform', { choices: [['platform', '平台'], ['enterprise', '企业'], ['investor', '投资人']] }); field(grid, '发布方名称', 'issuer', item.issuer, { maxLength: 120 });
     field(grid, '地区', 'region', item.region, { maxLength: 50 }); field(grid, '城市', 'city', item.city, { maxLength: 50 });
     field(grid, '金额（万元）', 'amountWan', item.amountWan, { type: 'number', min: 0, step: '0.01', hint: '留空表示面议。' }); field(grid, '金额展示文案', 'amountLabel', item.amountLabel, { maxLength: 30, hint: '例如“合作面议”；不填写则使用金额。' });
     field(grid, '行业', 'industries', item.industries, { hint: '多个值用逗号分隔，每项最多 30 字，最多 12 项。' }); field(grid, '标签', 'tags', item.tags, { hint: '多个值用逗号分隔，每项最多 30 字，最多 12 项。' });
-    field(grid, '合作模式', 'cooperationModes', item.cooperationModes, { hint: '多个值用逗号分隔。' }); field(grid, '业务状态', 'status', item.status || 'open', { choices: [['open', '开放'], ['closed', '已结束'], ['withdrawn', '已撤回']] });
-    renderImageField(grid, '封面图片', 'imageUrl', item.imageUrl); renderTone(grid, item.tone); renderViews(host, item);
+    field(grid, '合作标签', 'cooperationModes', item.cooperationModes, { hint: '多个值用逗号分隔；分类筛选请填写上方对应选项。' }); field(grid, '业务状态', 'status', item.status || 'open', { choices: [['open', '开放'], ['closed', '已结束'], ['withdrawn', '已撤回']] });
+    renderImageField(grid, '封面图片', 'imageUrl', item.imageUrl); renderTone(grid, item.tone); renderViews(classification, item);
   }
   function renderTone(parent, current) { const choices = [...tones]; if (current && !choices.some(([value]) => value === current)) choices.push([current, '保留当前色彩']); field(parent, '色彩模板', 'tone', current || 'medical', { choices }); }
   function renderPromo(host, item) {
@@ -272,48 +324,79 @@ if (typeof document !== 'undefined') {
     function addSection(data) { const row = el('div', 'repeat-row'), rowHeader = el('div', 'repeat-row-header'); rowHeader.append(el('span', '', '正文章节'), button('移除章节', 'text-button', () => { row.remove(); state.editor.dirty = true; })); row.append(rowHeader); field(row, '章节标题', 'sectionHeading', data.heading, { maxLength: 100 }); field(row, '段落内容', 'sectionParagraphs', (data.paragraphs || []).join('\n'), { type: 'textarea', rows: 4 }); rows.append(row); }
     sections.forEach(addSection);
   }
+
   function renderViews(host, item) {
-    const section = el('section'), header = el('div', 'subheading'), rows = el('div'), attrs = el('div'); rows.id = 'view-rows'; attrs.id = 'attribute-fields'; let retainedAttributes = { ...(item.attributes || {}) };
-    const featuredOnly = check(section, '仅用于首页主推，不在专区展示', 'featuredOnly', item.id && !(item.views || []).length);
-    header.append(el('h3', '', '展示专区与分类'), button('＋ 添加专区', 'secondary-button', () => { addView({ audience: 'investor', category: value('resourceType') }); featuredOnly.checked = false; rows.hidden = false; refreshAttributes(); state.editor.dirty = true; }));
-    section.append(header, el('p', 'field-hint', '同一资源可以出现在多个专区；每个专区最多一条展示配置。'), rows, attrs); host.append(section);
-    function categories(audience) { return allowedViewCategories(state.catalogs, audience, value('resourceType')); }
-    function availableAudiences() { return audiences.filter(([key]) => categories(key).length); }
-    function addView(view) {
-      const choices = availableAudiences(), currentAudience = choices.find(([key]) => key === view.audience)?.[0] || choices.find(([key]) => !readViews().some(view => view.audience === key))?.[0] || choices[0]?.[0];
-      const row = el('div', 'repeat-row inline-fields'), audience = field(row, '展示专区', 'viewAudience', currentAudience, { choices, required: true }), category = field(row, '分类', 'viewCategory', view.category || value('resourceType'), { choices: categories(audience.value), required: true });
-      field(row, '专区排序', 'viewSortOrder', view.sortOrder ?? 0, { type: 'number', min: 0, step: 1, required: true }); row.append(button('移除', 'text-button', () => { row.remove(); refreshAttributes(); state.editor.dirty = true; }));
-      audience.addEventListener('change', () => { const options = categories(audience.value); category.replaceChildren(); for (const [key, label] of options) { const option = el('option', '', label); option.value = key; category.append(option); } const match = options.find(([type]) => type === value('resourceType')); if (match) category.value = match[0]; refreshAttributes(); });
-      category.addEventListener('change', refreshAttributes); rows.append(row);
+    const selected=resourceSelection(state.catalogs,item,state.resourceAudience), grid=group(host,'资源分类');
+    const roleChoices=[...resourceRoles];if(item.views?.some(view=>view.audience === 'pool'))roleChoices.push(['pool','项目池（已有展示）']);
+    const audience=field(grid,'一级模块','resourceAudience',selected.audience,{choices:roleChoices,required:true});
+    const category=field(grid,'二级分类','resourceType',selected.category,{choices:resourceCategories(state.catalogs,audience.value).map(c=>[c.value,c.label]),required:true});
+    const note=el('p','field-hint full','三级分类全部选填。不填写也可发布并出现在本专栏；筛选某个具体选项时，只显示填写并匹配该选项的资源。');grid.append(note);
+    const attrs=el('div');attrs.id='attribute-fields';host.append(attrs);
+    const additional=el('details','resource-extra');additional.append(el('summary','','其他展示设置'));const extraBody=el('div');additional.append(extraBody);host.append(additional);
+    const featuredOnly=check(extraBody,'仅用于首页主推，不在角色专栏展示','featuredOnly',!!item.id && !(item.views || []).length);
+    const extraRows=el('div');extraBody.append(el('p','field-hint','可将同一资源同时展示在支持该二级分类的其他栏目。属性共用，已有其他栏目属性会保留。'),extraRows);
+    const cache=new Map();let previousType=category.value, previousAudience=audience.value;
+    let primaryFromAssociation=!!item.views?.some(view=>view.audience === audience.value);
+    let retained=resourcePayload(state.catalogs,item,previousType,{});
+    let extras=(item.views || []).filter(view=>view.audience !== audience.value).map(view=>({...view}));
+    const primaryOrder=field(extraBody,'当前专栏排序','primaryViewOrder',item.views?.find(view=>view.audience === audience.value)?.sortOrder || 0,{type:'number',min:0,step:1,required:true,hint:'数值越小越靠前，仅影响当前角色专栏。'});
+    function capture() {
+      for(const input of attrs.querySelectorAll('[data-resource-field]')) {
+        const next=input.multiple ? [...input.selectedOptions].map(option=>option.value) : input.value;
+        if(input.dataset.storage === 'attributes')retained[input.dataset.resourceField]=next;
+        else { const rootInput=$('editor-form').elements.namedItem(input.dataset.resourceField);rootInput.value=Array.isArray(next)?next.join('，'):next; }
+      }
+      extras=[...extraRows.querySelectorAll('[name=extraAudience]:checked')].map(input=>({audience:input.value,category:previousType,sortOrder:Number(input.closest('.extra-view-row').querySelector('[name=extraViewOrder]').value)}));
+      cache.set(previousType,{attributes:{...retained},primaryAudience:previousAudience,retainPrimary:primaryFromAssociation,views:[{audience:previousAudience,category:previousType,sortOrder:Number(primaryOrder.value)},...extras.map(view=>({...view}))]});
     }
-    function refreshAttributes() {
-      for (const input of attrs.querySelectorAll('[data-attribute]')) retainedAttributes[input.dataset.attribute] = input.multiple ? [...input.selectedOptions].map(option => option.value) : input.value;
+    function renderAttributes() {
       attrs.replaceChildren();
-      const definitions = attributeDefinitions(state.catalogs, value('resourceType')), grid = group(attrs, '分类信息');
-      if (!definitions.length) grid.append(el('p', 'field-hint full', '当前分类没有额外字段。'));
-      for (const definition of definitions) {
-        const stored = retainedAttributes[definition.field] ?? (definition.multiple ? [] : ''), choices = definition.multiple ? [...definition.options] : [{ value: '', label: '未分类 / 留空' }, ...definition.options];
-        for (const storedValue of Array.isArray(stored) ? stored : [stored]) if (storedValue && !choices.some(option => option.value === storedValue)) choices.push({ value: storedValue, label: `${storedValue}（当前值）` });
-        const input = field(grid, definition.label, 'attribute-' + definition.field, stored, { choices, multiple: definition.multiple, hint: definition.multiple ? '按住 Ctrl / Command 可选择多个；不确定时可以留空。' : undefined }); input.dataset.attribute = definition.field;
+      for(const name of ['industries','cooperationModes','kind'])$('editor-form').elements.namedItem(name).closest('label').hidden=false;
+      const controls=group(attrs,'三级分类（选填）');
+      for(const definition of resourceFilters(state.catalogs,audience.value,category.value)) {
+        const rootInput=definition.storage === 'root' ? $('editor-form').elements.namedItem(definition.field) : null;
+        const stored=rootInput ? (definition.multiple?splitList(rootInput.value):rootInput.value) : retained[definition.field] ?? (definition.multiple?[]:'');
+        if(rootInput)rootInput.closest('label').hidden=true;
+        const choices=definition.multiple?[...definition.options]:[{value:'',label:'暂不选择'},...definition.options];
+        for(const v of Array.isArray(stored)?stored:[stored])if(v&&!choices.some(option=>option.value === v))choices.push({value:v,label:v+'（保留已有值）'});
+        const input=field(controls,definition.label,'filter-'+definition.field,stored,{choices,multiple:definition.multiple,hint:definition.multiple?'可多选，按住 Ctrl / Command 选择；点击下方按钮可清空。':undefined});
+        input.dataset.resourceField=definition.field;input.dataset.storage=definition.storage;
+        if(definition.multiple)input.parentElement.append(button('清空选择','text-button',()=>{for(const option of input.options)option.selected=false;state.editor.dirty=true;}));
       }
+      if(!controls.children.length)controls.append(el('p','field-hint','当前分类没有额外筛选项。'));
     }
-    featuredOnly.addEventListener('change', () => { rows.hidden = featuredOnly.checked; refreshAttributes(); });
-    $('editor-form').elements.namedItem('resourceType').addEventListener('change', () => {
-      const type = value('resourceType'), choices = availableAudiences(), seen = new Set();
-      for (const row of rows.children) {
-        const audience = row.querySelector('[name=viewAudience]'), category = row.querySelector('[name=viewCategory]');
-        const current = choices.find(([key]) => key === audience.value && !seen.has(key))?.[0] || choices.find(([key]) => !seen.has(key))?.[0] || choices[0]?.[0];
-        audience.replaceChildren();
-        for (const [key, label] of choices) { const option = el('option', '', label); option.value = key; audience.append(option); }
-        audience.value = current; seen.add(current); category.replaceChildren();
-        for (const [key, label] of categories(current)) { const option = el('option', '', label); option.value = key; category.append(option); }
-        category.value = type;
+    function renderExtras() {
+      extraRows.replaceChildren();
+      for(const [key,label]of audiences)if(key !== audience.value && allowedViewCategories(state.catalogs,key,category.value).length) {
+        const previous=extras.find(view=>view.audience === key),row=el('div','extra-view-row'),input=check(row,label,'extraAudience',!!previous);input.value=key;
+        const order=field(row,label+'排序','extraViewOrder',previous?.sortOrder || 0,{type:'number',min:0,step:1,required:true});order.disabled=!input.checked;input.addEventListener('change',()=>{order.disabled=!input.checked;});extraRows.append(row);
       }
-      refreshAttributes();
-    });
-    (item.views?.length ? item.views : item.id ? [] : [{ audience: 'investor', category: item.resourceType || 'project', sortOrder: 0 }]).forEach(addView); rows.hidden = featuredOnly.checked; refreshAttributes();
+      extraRows.hidden=featuredOnly.checked;primaryOrder.disabled=featuredOnly.checked;
+    }
+    function changeSelection(roleChanged) {
+      capture();
+      if(roleChanged) {
+        const options=resourceCategories(state.catalogs,audience.value);category.replaceChildren();
+        for(const c of options){const option=el('option','',c.label);option.value=c.value;category.append(option);}
+        if(options.some(c=>c.value === previousType))category.value=previousType;
+      }
+      const typeChanged=previousType !== category.value, cached=cache.get(category.value);
+      if(typeChanged)retained=cached?.attributes || resourcePayload(state.catalogs,item,category.value,{});
+      const known=cached?.views || [];
+      const selectedViews=resourceViewSelection(known,audience.value,category.value,typeChanged ? cached?.primaryAudience : previousAudience,typeChanged ? !!cached?.retainPrimary : primaryFromAssociation);
+      primaryFromAssociation=cached?.primaryAudience === audience.value ? cached.retainPrimary : known.some(view=>view.audience === audience.value);
+      primaryOrder.value=selectedViews.find(view=>view.audience === audience.value).sortOrder;
+      extras=selectedViews.filter(view=>view.audience !== audience.value && allowedViewCategories(state.catalogs,view.audience,category.value).length);
+      previousType=category.value;previousAudience=audience.value;renderAttributes();renderExtras();state.editor.dirty=true;
+    }
+    audience.addEventListener('change',()=>changeSelection(true));category.addEventListener('change',()=>changeSelection(false));
+    featuredOnly.addEventListener('change',()=>{extraRows.hidden=featuredOnly.checked;primaryOrder.disabled=featuredOnly.checked;});
+    state.editor.readResourceClassification=()=>{
+      capture();
+      return {attributes:resourcePayload(state.catalogs,item,category.value,retained),views:featuredOnly.checked?[]:[{audience:audience.value,category:category.value,sortOrder:Number(primaryOrder.value)},...extras]};
+    };
+    renderAttributes();renderExtras();
   }
-  function readViews() { return [...($('view-rows')?.children || [])].map(row => ({ audience: row.querySelector('[name=viewAudience]').value, category: row.querySelector('[name=viewCategory]').value, sortOrder: Number(row.querySelector('[name=viewSortOrder]').value) })); }
   function readEditor(validate = true) {
     const { collection, item } = state.editor, result = { sortOrder: numberValue('sortOrder') }; if (item.id) result.version = item.version;
     if (collection === 'featured') result.resourceId = value('resourceId');
@@ -323,11 +406,11 @@ if (typeof document !== 'undefined') {
       const fields = { resources: ['title', 'summary', 'resourceType', 'kind', 'publisherRole', 'issuer', 'city', 'region', 'amountLabel', 'imageUrl', 'tone', 'status'], promos: ['title', 'eyebrow', 'description', 'imageUrl', 'tone', 'buttonText'], policies: ['title', 'summary', 'category', 'region', 'date', 'sourceKind', 'sourceName', 'sourceUrl'], institutions: ['name', 'summary', 'region'] }[collection]; fields.forEach(name => { result[name] = value(name); });
       for (const name of collection === 'resources' ? ['industries', 'tags', 'cooperationModes'] : collection === 'institutions' ? ['industries', 'serviceTags'] : []) { result[name] = splitList(value(name)); if (validate && (result[name].length > 12 || result[name].some(item => item.length > 30))) throw new Error('行业、标签和合作模式每组最多 12 项，每项最多 30 字。'); }
       if (collection === 'resources') {
-        result.amountWan = numberValue('amountWan', null); result.attributes = {};
-        for (const input of $('attribute-fields').querySelectorAll('[data-attribute]')) result.attributes[input.dataset.attribute] = input.multiple ? [...input.selectedOptions].map(option => option.value) : input.value;
-        result.views = $('editor-form').elements.namedItem('featuredOnly').checked ? [] : readViews();
-        if (validate && !result.views.length && !$('editor-form').elements.namedItem('featuredOnly').checked) throw new Error('请至少添加一个展示专区，或勾选仅用于首页主推。');
-        if (validate && new Set(result.views.map(view => view.audience)).size !== result.views.length) throw new Error('同一资源在每个专区只能设置一条展示配置。');
+        result.amountWan = numberValue('amountWan', null);
+        Object.assign(result,state.editor.readResourceClassification());
+        // Optional role filters for industries/cooperation share the existing top-level fields.
+        for(const name of ['industries','cooperationModes'])result[name]=splitList(value(name));
+        result.kind=value('kind');
       } else if (collection === 'promos') result.action = { type: value('actionType'), targetId: ['resource', 'policy'].includes(value('actionType')) ? value('targetId') : null };
       else if (collection === 'policies') { result.homeRecommended = $('editor-form').elements.namedItem('homeRecommended').checked; if (validate && result.sourceUrl && !/^https:\/\//i.test(result.sourceUrl)) throw new Error('来源链接必须使用 HTTPS。'); }
       else result.images = [...$('editor-form').querySelectorAll('[name=institutionImage]')].map(input => input.value.trim()).filter(Boolean);

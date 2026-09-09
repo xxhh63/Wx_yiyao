@@ -31,6 +31,7 @@
         <div class="page-heading"><div><p class="eyebrow">CONTENT WORKSPACE</p><h1 id="page-title">首页主推</h1><p class="page-description" id="page-description">选择优质资源，管理首页推荐内容与展示顺序。</p></div><button id="new-item" class="primary-button" type="button">＋ 新建主推</button></div>
         <div id="page-message" class="message" role="status" aria-live="polite" hidden></div>
         <section class="content-card" aria-label="内容列表">
+          <div id="resource-navigation" class="resource-navigation" hidden></div>
           <form id="search-form" class="toolbar"><label class="search-field"><span class="sr-only">搜索内容</span><input id="keyword" type="search" maxlength="100" placeholder="搜索标题、名称或关键词"></label><button class="secondary-button" type="submit">搜索</button><button class="text-button" id="refresh" type="button">刷新</button><span id="result-count" class="result-count"></span></form>
           <div id="list-content" aria-live="polite"><div class="empty-state">请先登录管理工作台</div></div>
           <div id="pagination" class="pagination" hidden><span id="page-label"></span><div><button id="previous-page" class="secondary-button" type="button">上一页</button><button id="next-page" class="secondary-button" type="button">下一页</button></div></div>
