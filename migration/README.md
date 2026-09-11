@@ -1,6 +1,6 @@
 # 二期内容迁移包
 
-本目录是已核对的原前端内容快照和手工导入材料。它不会随 Spring Boot 启动自动执行。云 MySQL 尚未执行此迁移；当前实际 SQL 验证仅在本地专用测试库完成。
+本目录是已核对的原前端内容快照和手工导入材料。它不会随 Spring Boot 启动自动执行。000～003 为此前导入包；用户已执行的云端导入不应重复。本轮新增 004 仅在本地专用测试库验证，尚未在云库执行。
 
 ## 文件与顺序
 
@@ -9,12 +9,17 @@
 | `000_preflight.sql` | 只读检查当前数据库、版本、一期表存在性和表结构 |
 | `001_schema.sql` | 增量内容建表，末尾自动附加标准管理会话及登录限流 DDL |
 | `002_seed.sql` | 默认 dry-run 的内容导入；预检冲突、事务写入、完整性与审计校验 |
+| `004_enterprise_categories.sql` | 最终企业分类的增量 JSON 属性迁移；无表结构变更；在已导入业务库单独执行 |
 | `003_verify.sql` | 只读核对批次、条数、别名、来源、图片引用及六项统计 |
 | `phase2-source.json` | 冻结的原始公开数组、字典、首页卡片及文件/图片 SHA-256；仅用于来源追溯，不是运行时接口数据 |
 | `phase2-manifest.json` | 规范化资源、专区关联、显式别名、来源说明与导入 hash |
 | `local-verification.md` | 本地 MySQL 实测范围与结果 |
 
-## Navicat 手工执行
+## 已导入业务库：只执行 004
+
+先在客户端选中正确业务库，执行 `SELECT DATABASE();` 核对，然后完整执行 `004_enterprise_categories.sql`。出现错误立即停止，并在原连接执行 `ROLLBACK;`。该脚本保留已填写或主动清空的新属性，未知旧值不猜测；可重复执行。详情见 [最终企业分类与部署说明](../docs/enterprise-final-20260911.md)。无需重新执行以下首次导入步骤。
+
+## Navicat 首次导入
 
 1. 连接已确认的业务库。云端应先核验目标库、备份与可恢复性；使用受控内网或核验后的加密连接。新建一个专用于迁移的查询连接，不混入其他未提交事务。
 2. 先打开并运行 `000_preflight.sql`。确认当前库正确，已有 `app_user`、`user_card`，版本支持 JSON 与 InnoDB。此包不新建库、不替换一期表，也不假定库中只有这两张表。
@@ -60,6 +65,6 @@ node scripts/export-phase2.test.cjs
 git diff --check
 ```
 
-默认从冻结 `phase2-source.json` 重建产物，不读取可能已变为接口页面的前端文件。仅在明确要更新迁移来源时，使用 `node scripts/export-phase2.cjs --source <原前端源码目录>` 重新捕获，之后必须重新核对 hash、别名和计数。不要对已经接入 API 的运行前端重做旧种子导出。
+导出脚本不会覆盖运行时 `src/main/resources/catalog-schema.json`，也不会生成或覆盖增量 `004_enterprise_categories.sql`。默认从冻结 `phase2-source.json` 重建旧迁移产物，不读取可能已变为接口页面的前端文件。仅在明确要更新迁移来源时，使用 `node scripts/export-phase2.cjs --source <原前端源码目录>` 重新捕获，之后必须重新核对 hash、别名和计数。不要对已经接入 API 的运行前端重做旧种子导出。
 
 可选真实 MySQL 回归：设置 `PHASE2_MYSQL_EXE` 为 mysql.exe 路径，`PHASE2_MYSQL_DEFAULTS` 为私有连接配置文件路径后，执行 `node scripts/export-phase2.test.cjs --mysql`。该检查固定连接 `127.0.0.1:13316/wx_yiyao_test`，只创建和清理自身 `phase2check_<进程ID>_` 前缀表，不用于云库或生产库；配置文件内容不得写入 Git。

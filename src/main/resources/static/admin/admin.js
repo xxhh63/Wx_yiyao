@@ -17,7 +17,7 @@ function safeImageUrl(value) {
 }
 function attributeDefinitions(catalogs, resourceType) {
   const definitions = new Map();
-  for (const catalog of Object.values(catalogs)) for (const filter of catalog.filtersByCategory?.[resourceType] || []) {
+  for (const catalog of Object.values(catalogs)) for (const filter of [...(catalog.filtersByCategory?.[resourceType] || []), ...(catalog.preservedFiltersByCategory?.[resourceType] || [])]) {
     const field = filter.field || filter.key;
     if (['sort', 'industry', 'cooperation', 'industries', 'cooperationModes', 'kind', 'publisherRole', 'region', 'city', 'status'].includes(field)) continue;
     const definition = definitions.get(field) || { field, label: filter.label || field, multiple: field === 'indications', options: [] };
@@ -147,7 +147,7 @@ if (typeof document !== 'undefined') {
     const roles=el('div','resource-role-tabs'); roles.setAttribute('aria-label','资源角色模块');
     const choose=(audience,category) => {state.resourceAudience=audience; state.resourceCategory=category; state.page=1; loadList();};
     for(const [key,label] of resourceRoles) {
-      const tab=button(label,'role-button',()=>choose(key, state.catalogs[key].filtersByCategory.all ? 'all' : resourceCategories(state.catalogs,key)[0].value));
+      const tab=button(label,'role-button',()=>choose(key, state.catalogs[key].categories.some(c=>c.value === 'all') ? 'all' : resourceCategories(state.catalogs,key)[0].value));
       tab.classList.toggle('active',state.resourceAudience === key);tab.setAttribute('aria-pressed',String(state.resourceAudience === key));roles.append(tab);
     }
     const all=button('查看全部资源（含首页及项目池）','text-button',()=>choose('',''));
@@ -330,7 +330,7 @@ if (typeof document !== 'undefined') {
     const roleChoices=[...resourceRoles];if(item.views?.some(view=>view.audience === 'pool'))roleChoices.push(['pool','项目池（已有展示）']);
     const audience=field(grid,'一级模块','resourceAudience',selected.audience,{choices:roleChoices,required:true});
     const category=field(grid,'二级分类','resourceType',selected.category,{choices:resourceCategories(state.catalogs,audience.value).map(c=>[c.value,c.label]),required:true});
-    const note=el('p','field-hint full','三级分类全部选填。不填写也可发布并出现在本专栏；筛选某个具体选项时，只显示填写并匹配该选项的资源。');grid.append(note);
+    const note=el('p','field-hint full','交易意向沿用资源的供需类型（产出=供给、诉求=需求）；其余三级分类选填。不填写也可发布并出现在本专栏，具体筛选仅匹配已填写的属性。');grid.append(note);
     const attrs=el('div');attrs.id='attribute-fields';host.append(attrs);
     const additional=el('details','resource-extra');additional.append(el('summary','','其他展示设置'));const extraBody=el('div');additional.append(extraBody);host.append(additional);
     const featuredOnly=check(extraBody,'仅用于首页主推，不在角色专栏展示','featuredOnly',!!item.id && !(item.views || []).length);
@@ -357,8 +357,8 @@ if (typeof document !== 'undefined') {
         const rootInput=definition.storage === 'root' ? $('editor-form').elements.namedItem(definition.field) : null;
         const stored=rootInput ? (definition.multiple?splitList(rootInput.value):rootInput.value) : retained[definition.field] ?? (definition.multiple?[]:'');
         if(rootInput)rootInput.closest('label').hidden=true;
-        const choices=definition.multiple?[...definition.options]:[{value:'',label:'暂不选择'},...definition.options];
-        for(const v of Array.isArray(stored)?stored:[stored])if(v&&!choices.some(option=>option.value === v))choices.push({value:v,label:v+'（保留已有值）'});
+        const choices=definition.multiple || definition.field === 'kind' ? [...definition.options] : [{value:'',label:'暂不选择'},...definition.options];
+        for(const v of Array.isArray(stored)?stored:[stored])if(audience.value !== 'enterprise'&&v&&!choices.some(option=>option.value === v))choices.push({value:v,label:v+'（保留已有值）'});
         const input=field(controls,definition.label,'filter-'+definition.field,stored,{choices,multiple:definition.multiple,hint:definition.multiple?'可多选，按住 Ctrl / Command 选择；点击下方按钮可清空。':undefined});
         input.dataset.resourceField=definition.field;input.dataset.storage=definition.storage;
         if(definition.multiple)input.parentElement.append(button('清空选择','text-button',()=>{for(const option of input.options)option.selected=false;state.editor.dirty=true;}));

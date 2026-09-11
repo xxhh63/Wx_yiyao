@@ -309,7 +309,7 @@ function writeArtifacts(source, outputRoot=root) {
   const adminSqlPath=path.join(root,'src/main/resources/migration/003-admin.sql');
   const adminSql=fs.existsSync(adminSqlPath)?fs.readFileSync(adminSqlPath,'utf8'):'';
   const outputs={'migration/phase2-source.json':JSON.stringify(source,null,2)+'\n','migration/phase2-manifest.json':JSON.stringify(manifest,null,2)+'\n',
-    'src/main/resources/catalog-schema.json':JSON.stringify(manifest.catalogSchema,null,2)+'\n','src/main/resources/migration/002-content.sql':renderSchema(),
+    'src/main/resources/migration/002-content.sql':renderSchema(),
     'migration/001_schema.sql':renderSchema()+(adminSql?'\n-- Standard admin session and throttle tables; apply this section once.\n'+adminSql:''),'migration/002_seed.sql':renderSeed(manifest),'migration/003_verify.sql':renderVerify(manifest)};
   for (const [file,contents] of Object.entries(outputs)) {const full=path.join(outputRoot,file);fs.mkdirSync(path.dirname(full),{recursive:true});fs.writeFileSync(full,contents);}
   return manifest;

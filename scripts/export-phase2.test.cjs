@@ -145,3 +145,18 @@ if (process.argv.includes('--mysql')) {
     run(names.map(name=>'DROP TABLE IF EXISTS '+prefix+name+';').join('\n'));
   }
 }
+
+const os = require('node:os');
+const exportDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'yiyao-seed-regression-'));
+try {
+  const liveCatalog = path.join(exportDirectory, 'src/main/resources/catalog-schema.json');
+  fs.mkdirSync(path.dirname(liveCatalog), { recursive: true });
+  fs.writeFileSync(liveCatalog, '{"revision":"enterprise-final"}');
+  require(exporter).writeArtifacts(source, exportDirectory);
+  assert.equal(fs.readFileSync(liveCatalog, 'utf8'), '{"revision":"enterprise-final"}', 'seed export preserves the current runtime catalog');
+} finally {
+  const resolvedExportDirectory = fs.realpathSync(exportDirectory);
+  assert.equal(path.dirname(resolvedExportDirectory), fs.realpathSync(os.tmpdir()));
+  assert.ok(path.basename(resolvedExportDirectory).startsWith('yiyao-seed-regression-'));
+  fs.rmSync(resolvedExportDirectory, { recursive: true, force: true });
+}

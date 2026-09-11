@@ -219,6 +219,17 @@ class ContentCrudTest {
         for(var filter:catalog.path("filtersByCategory").path(type)) {
           String key=filter.path("key").asText();if(key.equals("sort"))continue;
           String option=filter.path("options").get(1).path("value").asText();
+          // A resource always has a supply/demand kind; the new enterprise filter reuses it.
+          if(key.equals("kind")) {
+            query.put(key,"supply");
+            assertEquals(1,json.valueToTree(service.list("resources",query,false)).path("total").asInt());
+            query.put(key,"demand");
+            assertEquals(0,json.valueToTree(service.list("resources",query,false)).path("total").asInt());
+            var changed=service.save("resources",saved.path("id").asText(),saved.deepCopy().put("kind","demand"),actor);
+            assertEquals(1,json.valueToTree(service.list("resources",query,false)).path("total").asInt());
+            saved=service.save("resources",saved.path("id").asText(),saved.deepCopy().put("version",changed.path("version").asLong()),actor);
+            query.remove(key);continue;
+          }
           query.put(key,option);
           assertEquals(0,json.valueToTree(service.list("resources",query,false)).path("total").asInt(),audience+"/"+type+" blank "+key);
           if(firstKey==null){firstKey=key;firstValue=option;}
@@ -239,6 +250,93 @@ class ContentCrudTest {
         }
       }
     }
+  }
+
+
+  @Test void enterpriseMigrationPreservesSharedRolesAndIsIdempotent() throws Exception {
+    var input=resource().put("resourceType","patent");
+    input.putArray("views").addObject().put("audience","enterprise").put("category","patent");
+    ((com.fasterxml.jackson.databind.node.ArrayNode)input.path("views")).addObject().put("audience","scientist").put("category","patent");
+    input.putObject("attributes").put("patentType","发明专利").put("patentField","药物化学")
+        .put("patentStatus","有效授权").put("cooperationMode","独占许可");
+    var saved=publish("resources",create("resources",input),"PUBLISHED");
+    String id=saved.path("id").asText();
+    // Emulate an old stored payload that predates the enterprise-specific fields.
+    var legacy=(ObjectNode)json.readTree(jdbc.queryForObject("SELECT payload FROM content_resource WHERE id=?",String.class,id));
+    var attrs=(ObjectNode)legacy.path("attributes");
+    var retired=new ArrayList<String>();attrs.fieldNames().forEachRemaining(key->{if(key.startsWith("enterprise"))retired.add(key);});attrs.remove(retired);
+    jdbc.update("UPDATE content_resource SET payload=CAST(? AS JSON) WHERE id=?",legacy.toString(),id);
+    String migration=java.nio.file.Files.readString(java.nio.file.Path.of("migration/004_enterprise_categories.sql"));
+    Runnable migrate=()->{
+      try(var connection=jdbc.getDataSource().getConnection()) {
+        org.springframework.jdbc.datasource.init.ScriptUtils.executeSqlScript(connection,
+            new org.springframework.core.io.ByteArrayResource(migration.getBytes(StandardCharsets.UTF_8)));
+      } catch(java.sql.SQLException e){throw new RuntimeException(e);}
+    };
+    migrate.run();
+    var migrated=service.detail("resources",id,null,true);
+    assertEquals("药物化学",migrated.at("/attributes/patentField").asText());
+    assertEquals("独占许可",migrated.at("/attributes/cooperationMode").asText());
+    assertEquals("发明专利",migrated.at("/attributes/patentType").asText());
+    assertEquals("",migrated.at("/attributes/enterprisePatentField").asText(),"do not guess the modality from an old patent field");
+    assertEquals("专利授权",migrated.at("/attributes/enterpriseCooperationMode").asText());
+    assertEquals(2,migrated.path("views").size());
+    long version=migrated.path("version").asLong();migrate.run();
+    assertEquals(version,service.detail("resources",id,null,true).path("version").asLong(),"re-running migration is a no-op");
+    var q=new HashMap<>(Map.of("audience","enterprise","category","patent","keyword",actor,"patentType","发明专利"));
+    assertEquals(1,json.valueToTree(service.list("resources",q,false)).path("total").asInt());
+    q.put("patentField","抗体");
+    assertEquals(0,json.valueToTree(service.list("resources",q,false)).path("total").asInt(),"blank enterprise field must not match");
+    ((ObjectNode)migrated.path("attributes")).put("enterprisePatentField","抗体");
+    var edited=service.save("resources",id,migrated,actor);
+    assertEquals(1,json.valueToTree(service.list("resources",q,false)).path("total").asInt());
+    assertEquals("药物化学",edited.at("/attributes/patentField").asText());
+    assertEquals(1,json.valueToTree(service.list("resources",Map.of("audience","scientist","category","patent","keyword",actor,"patentField","药物化学"),false)).path("total").asInt());
+    q.put("patentField","药物化学");
+    assertEquals(400,assertThrows(ResponseStatusException.class,()->service.list("resources",q,false)).getStatusCode().value());
+    ((ObjectNode)edited.path("attributes")).put("enterpriseCooperationMode","");
+    edited=service.save("resources",id,edited,actor);migrate.run();
+    assertEquals("",service.detail("resources",id,null,true).at("/attributes/enterpriseCooperationMode").asText(),"explicit clearing must survive migration");
+  }
+
+
+  @Test void enterprisePublishedClassificationsUpdateStatistics() throws Exception {
+    var before=service.stats();
+    var expert=resource().put("resourceType","talent");
+    expert.putArray("views").addObject().put("audience","enterprise").put("category","talent");
+    String maturityField="";
+    for(var filter:service.catalog("enterprise").at("/filtersByCategory/talent"))if(filter.path("key").asText().equals("talentMaturity"))maturityField=filter.path("field").asText("talentMaturity");
+    expert.putObject("attributes").put(maturityField,"资深专家");
+    publish("resources",create("resources",expert),"PUBLISHED");
+    assertEquals(((Number)before.get("experts")).longValue()+1,((Number)service.stats().get("experts")).longValue(),"published enterprise expert contributes to the data center");
+    var copyright=resource().put("resourceType","patent");
+    copyright.putArray("views").addObject().put("audience","enterprise").put("category","patent");
+    String patentTypeField="";
+    for(var filter:service.catalog("enterprise").at("/filtersByCategory/patent"))if(filter.path("key").asText().equals("patentType"))patentTypeField=filter.path("field").asText("patentType");
+    copyright.putObject("attributes").put(patentTypeField,"软著");
+    publish("resources",create("resources",copyright),"PUBLISHED");
+    assertEquals(((Number)before.get("patentResources")).longValue(),((Number)service.stats().get("patentResources")).longValue(),"software copyrights are not patent resources");
+  }
+
+
+  @Test void enterpriseMigrationPreservesPartiallyFilledAttributes() throws Exception {
+    var input=resource().put("resourceType","service");
+    input.putArray("views").addObject().put("audience","enterprise").put("category","service");
+    input.putObject("attributes").put("serviceType","CRO服务").put("qualification","丰富落地案例")
+        .put("cooperationMode","单项项目外包").put("enterpriseServiceType","增值服务").put("enterpriseCooperationMode","");
+    var saved=create("resources",input);String id=saved.path("id").asText();
+    jdbc.update("UPDATE content_resource SET payload=JSON_REMOVE(payload,'$.attributes.enterpriseQualification') WHERE id=?",id);
+    String migration=java.nio.file.Files.readString(java.nio.file.Path.of("migration/004_enterprise_categories.sql"));
+    try(var connection=jdbc.getDataSource().getConnection()) {
+      org.springframework.jdbc.datasource.init.ScriptUtils.executeSqlScript(connection,
+          new org.springframework.core.io.ByteArrayResource(migration.getBytes(StandardCharsets.UTF_8)));
+    }
+    var result=service.detail("resources",id,null,true);
+    assertEquals("增值服务",result.at("/attributes/enterpriseServiceType").asText(),"existing JSON string must not acquire extra quotes");
+    assertEquals("",result.at("/attributes/enterpriseCooperationMode").asText(),"intentional blank is preserved when another field is missing");
+    assertEquals("丰富案例",result.at("/attributes/enterpriseQualification").asText());
+    assertEquals("CRO服务",result.at("/attributes/serviceType").asText(),"legacy classification stays intact");
+    assertDoesNotThrow(()->service.save("resources",id,result,actor));
   }
 
   private ObjectNode create(String collection,ObjectNode input){return assertDoesNotThrow(()->service.save(collection,null,input,actor));}
