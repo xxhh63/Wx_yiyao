@@ -1,7 +1,7 @@
 'use strict';
 const policyCategories = ['科技创新', '成果转化', '知识产权', '产业扶持'];
 function allowedViewCategories(catalogs, audience, resourceType) {
-  return (catalogs[audience]?.categories || []).filter(category => !category.pending && category.value === resourceType).map(category => [category.value, category.label]);
+  return [...(catalogs[audience]?.categories || []), ...(catalogs[audience]?.legacyCategories || [])].filter(category => !category.pending && category.value === resourceType).map(category => [category.value, category.label]);
 }
 function listQuery(collection, { page, pageSize, keyword = '', resourceAudience = '', resourceCategory = '' }) {
   const query = new URLSearchParams({ page, pageSize });
@@ -20,7 +20,7 @@ function attributeDefinitions(catalogs, resourceType) {
   for (const catalog of Object.values(catalogs)) for (const filter of [...(catalog.filtersByCategory?.[resourceType] || []), ...(catalog.preservedFiltersByCategory?.[resourceType] || [])]) {
     const field = filter.field || filter.key;
     if (['sort', 'industry', 'cooperation', 'industries', 'cooperationModes', 'kind', 'publisherRole', 'region', 'city', 'status'].includes(field)) continue;
-    const definition = definitions.get(field) || { field, label: filter.label || field, multiple: field === 'indications', options: [] };
+    const definition = definitions.get(field) || { field, label: filter.label || field, multiple: !!filter.multiple || field === 'indications', options: [] };
     for (const option of filter.options || []) {
       const value = typeof option === 'string' ? option : option.value;
       if (value && value !== 'all' && !definition.options.some(item => item.value === value)) definition.options.push({ value, label: option.label || value });
@@ -30,20 +30,23 @@ function attributeDefinitions(catalogs, resourceType) {
   return [...definitions.values()];
 }
 
-const resourceRoles = [['investor', '投资人'], ['enterprise', '企业'], ['scientist', '科学家/科研院所'], ['manager', '技术经理人']];
+const resourceRoles = [['investor', '投资人'], ['enterprise', '企业'], ['scientist', '科学家/科研院所'], ['manager', '服务机构']];
 function resourceCategories(catalogs, audience) {
   return (catalogs[audience]?.categories || []).filter(category => category.value !== 'all' && !category.pending);
+}
+function editableResourceCategories(catalogs, audience, item) {
+  return [...resourceCategories(catalogs,audience),...(item.id?(catalogs[audience]?.legacyCategories || []).filter(c=>c.value === item.resourceType):[])];
 }
 function resourceFilters(catalogs, audience, category) {
   return (catalogs[audience]?.filtersByCategory?.[category] || []).filter(filter => filter.key !== 'sort').map(filter => {
     const field = filter.field || ({industry:'industries', cooperation:'cooperationModes'}[filter.key]) || filter.key;
-    return { field, label:filter.label || field, storage:['industries','cooperationModes','kind'].includes(field) ? 'root' : 'attributes', multiple:['industries','cooperationModes','indications'].includes(field), options:(filter.options || []).map(option => typeof option === 'string' ? {value:option,label:option} : option).filter(option => option.value && option.value !== 'all') };
+    return { field, label:filter.label || field, storage:['industries','cooperationModes','kind'].includes(field) ? 'root' : 'attributes', multiple:!!filter.multiple || ['industries','cooperationModes','indications'].includes(field), options:(filter.options || []).map(option => typeof option === 'string' ? {value:option,label:option} : option).filter(option => option.value && option.value !== 'all') };
   });
 }
 function resourceSelection(catalogs, item, preferred) {
   const views=item.views || [];
   const first=views.find(view => view.audience === preferred) || views.find(view => resourceRoles.some(([key]) => key === view.audience)) || views[0];
-  const audience=first?.audience || (resourceCategories(catalogs, preferred).some(c => !item.resourceType || c.value === item.resourceType) ? preferred : resourceRoles.find(([key]) => resourceCategories(catalogs,key).some(c => !item.resourceType || c.value === item.resourceType))?.[0]) || 'investor';
+  const audience=first?.audience || (editableResourceCategories(catalogs, preferred, item).some(c => !item.resourceType || c.value === item.resourceType) ? preferred : resourceRoles.find(([key]) => editableResourceCategories(catalogs,key,item).some(c => !item.resourceType || c.value === item.resourceType))?.[0]) || 'investor';
   return { audience, category:first?.category || item.resourceType || resourceCategories(catalogs,audience)[0]?.value };
 }
 function resourcePayload(catalogs, item, type, edits) {
@@ -63,8 +66,8 @@ if (typeof document !== 'undefined') {
   const names = { featured: '首页主推', promos: '广告管理', policies: '政策资讯', resources: '资源管理', institutions: '机构管理', stats: '数据概览', audit: '操作记录' };
   const singular = { featured: '主推', promos: '广告', policies: '资讯', resources: '资源', institutions: '机构' };
   const descriptions = { featured: '选择优质资源，管理首页推荐内容与展示顺序。', promos: '维护移动广告的文案、视觉和内容跳转。', policies: '维护资讯正文与来源，让每一次发布都有据可查。', resources: '按角色模块维护资源，选择二级分类后补充可选筛选信息。', institutions: '维护机构介绍、服务领域与图片资料。', stats: '实时读取在架资源数量，了解平台内容构成。', audit: '查看内容变更、发布与下架的操作记录。' };
-  const audiences = [['pool', '骊珠要素'], ['investor', '投资人专区'], ['enterprise', '企业专区'], ['scientist', '科研专区'], ['manager', '技术经理人专区']];
-  const resourceTypes = [['project', '项目'], ['mah', 'MAH'], ['scene', '场景'], ['talent', '人才'], ['technology', '技术'], ['patent', '专利'], ['data', '数据'], ['service', '服务'], ['achievement', '成果']];
+  const audiences = [['pool', '骊珠要素'], ['investor', '投资人专区'], ['enterprise', '企业专区'], ['scientist', '科研专区'], ['manager', '服务机构专区']];
+  const resourceTypes = [['project', '项目'], ['mah', 'MAH'], ['scene', '场景'], ['talent', '人才'], ['technology', '技术'], ['patent', '专利'], ['data', '数据'], ['service', '服务'], ['achievement', '历史成果'], ['cro', 'CRO服务'], ['cdmo', 'CDMO服务'], ['solution', '骊珠整体解决方案'], ['ip_service', '知识产权服务'], ['financing_service', '投融资服务']];
   const tones = [['medical', '医药青绿'], ['cyber', '科技蓝'], ['material', '材料暖金'], ['robot', '智能蓝'], ['energy', '能源绿'], ['network', '互联蓝'], ['lab', '实验室青'], ['build', '产业灰蓝'], ['car', '装备蓝'], ['bio', '生物绿'], ['mint', '薄荷绿'], ['blue', '明亮蓝'], ['aqua', '水青色'], ['navy', '深蓝']];
   const state = { tab: 'featured', page: 1, pageSize: 20, keyword: '', total: 0, listSequence: 0, editorSequence: 0, catalogs: {}, session: null, editor: null, uploads: 0, resourceAudience: 'investor', resourceCategory: 'all' };
   let controlId = 0;
@@ -329,7 +332,10 @@ if (typeof document !== 'undefined') {
     const selected=resourceSelection(state.catalogs,item,state.resourceAudience), grid=group(host,'资源分类');
     const roleChoices=[...resourceRoles];if(item.views?.some(view=>view.audience === 'pool'))roleChoices.push(['pool','项目池（已有展示）']);
     const audience=field(grid,'一级模块','resourceAudience',selected.audience,{choices:roleChoices,required:true});
-    const category=field(grid,'二级分类','resourceType',selected.category,{choices:resourceCategories(state.catalogs,audience.value).map(c=>[c.value,c.label]),required:true});
+    // Existing achievements retain their exact type; new service records cannot select the retired category.
+    const editorCategories=role=>editableResourceCategories(state.catalogs,role,item);
+    const category=field(grid,'二级分类','resourceType',selected.category,{choices:editorCategories(audience.value).map(c=>[c.value,c.label]),required:true});
+    if(item.resourceType === 'achievement' && item.id)grid.append(el('p','field-hint full','这是原技术经理人的历史成果，保留原资料，可在全部资源中维护，不进入新的服务机构专栏。'));
     const note=el('p','field-hint full','交易意向沿用资源的供需类型（产出=供给、诉求=需求）；其余三级分类选填。不填写也可发布并出现在本专栏，具体筛选仅匹配已填写的属性。');grid.append(note);
     const attrs=el('div');attrs.id='attribute-fields';host.append(attrs);
     const additional=el('details','resource-extra');additional.append(el('summary','','其他展示设置'));const extraBody=el('div');additional.append(extraBody);host.append(additional);
@@ -358,7 +364,7 @@ if (typeof document !== 'undefined') {
         const stored=rootInput ? (definition.multiple?splitList(rootInput.value):rootInput.value) : retained[definition.field] ?? (definition.multiple?[]:'');
         if(rootInput)rootInput.closest('label').hidden=true;
         const choices=definition.multiple || definition.field === 'kind' ? [...definition.options] : [{value:'',label:'暂不选择'},...definition.options];
-        for(const v of Array.isArray(stored)?stored:[stored])if(audience.value !== 'enterprise'&&v&&!choices.some(option=>option.value === v))choices.push({value:v,label:v+'（保留已有值）'});
+        for(const v of Array.isArray(stored)?stored:[stored])if((audience.value === 'pool'||(state.catalogs[audience.value]?.legacyCategories || []).some(c=>c.value === category.value))&&v&&!choices.some(option=>option.value === v))choices.push({value:v,label:v+'（保留已有值）'});
         const input=field(controls,definition.label,'filter-'+definition.field,stored,{choices,multiple:definition.multiple,hint:definition.multiple?'可多选，按住 Ctrl / Command 选择；点击下方按钮可清空。':undefined});
         input.dataset.resourceField=definition.field;input.dataset.storage=definition.storage;
         if(definition.multiple)input.parentElement.append(button('清空选择','text-button',()=>{for(const option of input.options)option.selected=false;state.editor.dirty=true;}));
@@ -376,7 +382,7 @@ if (typeof document !== 'undefined') {
     function changeSelection(roleChanged) {
       capture();
       if(roleChanged) {
-        const options=resourceCategories(state.catalogs,audience.value);category.replaceChildren();
+        const options=editorCategories(audience.value);category.replaceChildren();
         for(const c of options){const option=el('option','',c.label);option.value=c.value;category.append(option);}
         if(options.some(c=>c.value === previousType))category.value=previousType;
       }

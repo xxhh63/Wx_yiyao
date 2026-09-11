@@ -235,7 +235,7 @@ class ContentCrudTest {
           if(firstKey==null){firstKey=key;firstValue=option;}
           var edit=saved.deepCopy();String field=filter.path("field").asText(key);
           if(field.equals("industries")||field.equals("cooperationModes"))edit.putArray(field).add(option);
-          else if(field.equals("indications"))((ObjectNode)edit.path("attributes")).putArray(field).add(option);
+          else if(filter.path("multiple").asBoolean()||field.equals("indications"))((ObjectNode)edit.path("attributes")).putArray(field).add(option);
           else ((ObjectNode)edit.path("attributes")).put(field,option);
           edit=service.save("resources",saved.path("id").asText(),edit,actor);
           assertEquals(1,json.valueToTree(service.list("resources",query,false)).path("total").asInt(),audience+"/"+type+" filled "+key);
@@ -291,7 +291,8 @@ class ContentCrudTest {
     var edited=service.save("resources",id,migrated,actor);
     assertEquals(1,json.valueToTree(service.list("resources",q,false)).path("total").asInt());
     assertEquals("药物化学",edited.at("/attributes/patentField").asText());
-    assertEquals(1,json.valueToTree(service.list("resources",Map.of("audience","scientist","category","patent","keyword",actor,"patentField","药物化学"),false)).path("total").asInt());
+    assertEquals(1,json.valueToTree(service.list("resources",Map.of("audience","scientist","category","patent","keyword",actor),false)).path("total").asInt());
+    assertEquals("药物化学",edited.at("/attributes/patentField").asText(),"old scientific attribute is retained even after its filter is retired");
     q.put("patentField","药物化学");
     assertEquals(400,assertThrows(ResponseStatusException.class,()->service.list("resources",q,false)).getStatusCode().value());
     ((ObjectNode)edited.path("attributes")).put("enterpriseCooperationMode","");
@@ -342,6 +343,66 @@ class ContentCrudTest {
   private ObjectNode create(String collection,ObjectNode input){return assertDoesNotThrow(()->service.save(collection,null,input,actor));}
   private ObjectNode publish(String collection,ObjectNode item,String status){return assertDoesNotThrow(()->service.publication(collection,item.path("id").asText(),json.createObjectNode().put("status",status).put("version",item.path("version").asLong()),actor));}
   private ObjectNode node(String value)throws Exception{return (ObjectNode)json.readTree(value);}
+
+  @Test void serviceProviderCatalogExcludesHistoricalAchievementsButAdminPreservesThem() throws Exception {
+    var old=resource().put("resourceType","achievement");
+    old.putObject("attributes").put("achievementType","技术成果").put("technicalTrack","小分子药物");
+    old.putArray("views").addObject().put("audience","manager").put("category","achievement").put("sortOrder",23);
+    old=publish("resources",create("resources",old),"PUBLISHED");
+    var beforeStats=service.stats();
+    var saved=service.save("resources",old.path("id").asText(),old,actor);
+    assertEquals("achievement",saved.path("resourceType").asText());
+    assertEquals("技术成果",saved.at("/attributes/achievementType").asText());
+    assertEquals(23,saved.at("/views/0/sortOrder").asInt());
+    assertEquals(beforeStats,service.stats());
+    assertEquals(1,json.valueToTree(service.list("resources",Map.of("keyword",actor),true)).path("total").asInt());
+    for(boolean admin:List.of(false,true))assertEquals(0,json.valueToTree(service.list("resources",Map.of("audience","manager","category","all","keyword",actor),admin)).path("total").asInt());
+    assertEquals(400,assertThrows(ResponseStatusException.class,()->service.list("resources",Map.of("audience","manager","category","achievement"),false)).getStatusCode().value());
+    assertEquals(old.path("id"),service.detail("resources",old.path("id").asText(),"manager",false).path("id"));
+    assertEquals(400,assertThrows(ResponseStatusException.class,()->service.list("resources",Map.of("audience","scientist","category","finance"),false)).getStatusCode().value());
+  }
+
+  @Test void rolesMigrationPreservesSharedDataAndFiltersArrays() throws Exception {
+    var input=resource();
+    input.putObject("attributes").put("projectType","早期创新药项目").put("researchStage","2期临床").putArray("indications").add("眼科").add("肿瘤疾病");
+    input.putArray("views").addObject().put("audience","investor").put("category","project");
+    var saved=publish("resources",create("resources",input),"PUBLISHED");String id=saved.path("id").asText();
+    jdbc.update("UPDATE content_resource SET payload=JSON_REMOVE(payload,'$.attributes.investorProjectType','$.attributes.investorResearchStage','$.attributes.investorIndications') WHERE id=?",id);
+    runRolesMigration();saved=service.detail("resources",id,null,true);
+    assertEquals("临床研究",saved.at("/attributes/investorResearchStage").asText());
+    assertEquals("2期临床",saved.at("/attributes/researchStage").asText());
+    assertEquals(json.readTree("[\"肿瘤疾病\"]"),saved.at("/attributes/investorIndications"));
+    assertEquals(json.readTree("[\"眼科\",\"肿瘤疾病\"]"),saved.at("/attributes/indications"));
+    long version=saved.path("version").asLong();runRolesMigration();assertEquals(version,service.detail("resources",id,null,true).path("version").asLong());
+    var attrs=(ObjectNode)saved.path("attributes");attrs.putArray("investorIndications").add("肿瘤疾病").add("心血管系统");attrs.put("investorResearchStage","");
+    saved=service.save("resources",id,saved,actor);
+    jdbc.update("UPDATE content_resource SET payload=JSON_REMOVE(payload,'$.attributes.investorProjectType') WHERE id=?",id);
+    runRolesMigration();saved=service.detail("resources",id,null,true);
+    assertEquals("",saved.at("/attributes/investorResearchStage").asText());assertEquals(2,saved.at("/attributes/investorIndications").size());
+    for(String indication:List.of("肿瘤疾病","心血管系统"))assertEquals(1,json.valueToTree(service.list("resources",Map.of("audience","investor","category","project","keyword",actor,"indication",indication),false)).path("total").asInt());
+    assertEquals(400,assertThrows(ResponseStatusException.class,()->service.list("resources",Map.of("audience","investor","category","project","indication","眼科"),false)).getStatusCode().value());
+    var invalid=saved.deepCopy();((ObjectNode)invalid.path("attributes")).put("investorIndications","肿瘤疾病");
+    assertEquals(400,assertThrows(ResponseStatusException.class,()->service.save("resources",id,invalid,actor)).getStatusCode().value());
+
+    var patent=resource().put("resourceType","patent");
+    patent.putArray("views").addObject().put("audience","scientist").put("category","patent");
+    ((com.fasterxml.jackson.databind.node.ArrayNode)patent.path("views")).addObject().put("audience","enterprise").put("category","patent");
+    patent.putObject("attributes").put("patentField","药物化学").put("patentType","发明专利").put("cooperationMode","独占许可").put("enterprisePatentField","抗体").put("enterpriseCooperationMode","专利转让");
+    patent=publish("resources",create("resources",patent),"PUBLISHED");String patentId=patent.path("id").asText();
+    jdbc.update("UPDATE content_resource SET payload=JSON_REMOVE(payload,'$.attributes.scientistPatentField','$.attributes.scientistCooperationMode') WHERE id=?",patentId);
+    runRolesMigration();patent=service.detail("resources",patentId,null,true);
+    assertEquals("",patent.at("/attributes/scientistPatentField").asText());assertEquals("专利授权",patent.at("/attributes/scientistCooperationMode").asText());
+    assertEquals("抗体",patent.at("/attributes/enterprisePatentField").asText());assertEquals("独占许可",patent.at("/attributes/cooperationMode").asText());assertEquals(2,patent.path("views").size());
+  }
+
+  private void runRolesMigration() throws Exception {
+    String migration=java.nio.file.Files.readString(java.nio.file.Path.of("migration/005_role_categories.sql"));
+    try(var connection=jdbc.getDataSource().getConnection()) {
+      try(var statement=connection.createStatement()){for(String sql:migration.replaceAll("(?m)^--.*$","").split(";"))if(!sql.isBlank())statement.execute(sql);}
+      catch(Exception error){connection.rollback();throw error;}
+    }
+  }
+
   private ObjectNode policy()throws Exception{return node("{\"title\":\""+actor+"\",\"category\":\"知识产权\",\"date\":\"2026-09-09\",\"sourceName\":\"test source\"}");}
   private ObjectNode resource()throws Exception{return node("{\"title\":\""+actor+"\",\"resourceType\":\"project\",\"kind\":\"supply\",\"industries\":[\"生物医药\"],\"cooperationModes\":[\"投资合作\"],\"views\":[{\"audience\":\"pool\",\"category\":\"project\",\"sortOrder\":3}]}");}
   private static String encode(String value){return URLEncoder.encode(value,StandardCharsets.UTF_8);}

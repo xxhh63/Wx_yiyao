@@ -12,7 +12,8 @@ import java.util.*;
 
 @Component
 public class ContentValidation {
-  static final Set<String> TYPES=Set.of("project","mah","scene","talent","technology","patent","data","service","achievement");
+  static final Set<String> TYPES=Set.of("project","mah","scene","talent","technology","patent","data","service","achievement","cro","cdmo","solution","ip_service","financing_service");
+  static boolean multipleAttribute(String field) { return Set.of("indications","investorIndications").contains(field); }
   static final Set<String> META=Set.of("id","publicationStatus","sortOrder","version","publishedAt","updatedAt");
   private final CatalogSchema schema;
   public ContentValidation(CatalogSchema schema) { this.schema=schema; }
@@ -175,7 +176,7 @@ public class ContentValidation {
     var fields=schema.attributes(type);keys(attributes,fields.keySet());
     var normalized=out.putObject("attributes");
     fields.forEach((key,options)->{
-      if(key.equals("indications")) {
+      if(multipleAttribute(key)) {
         var values=strings(attributes,key,16,80);
         for(var value:values)if(!options.contains(value.asText()))throw bad(key+"选项无效");
         normalized.set(key,values);

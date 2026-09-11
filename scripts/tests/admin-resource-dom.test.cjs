@@ -57,4 +57,29 @@ test('fresh role switch inside another category does not retain provisional old 
 test('explicit extra association survives category and role changes',()=>{reset({resourceType:'technology'});extra('scientist').checkbox.checked=true;extra('scientist').checkbox.fire('change');extra('scientist').order.value=23;category('talent');category('technology');role('scientist');role('enterprise');assert.deepEqual(viewRoles(),['enterprise','scientist']);assert.equal(views().find(v=>v.audience==='scientist').sortOrder,23);});
 test('intentional removal of existing extra association survives category roundtrip',()=>{reset(existing);extra('scientist').checkbox.checked=false;extra('scientist').checkbox.fire('change');category('talent');category('technology');assert.deepEqual(viewRoles(),['enterprise']);});
 test('featured-only removes all submitted views',()=>{reset(existing);control('featuredOnly').checked=true;control('featuredOnly').fire('change');assert.deepEqual(views(),[]);});
+test('old achievement keeps its type and attributes when opened from all resources',()=>{
+ const old={id:'historical',resourceType:'achievement',attributes:{achievementType:'技术成果',technicalTrack:'小分子药物',achievementMaturity:'实验室小试阶段'},views:[{audience:'manager',category:'achievement',sortOrder:27}]};
+ reset(old);assert.equal(control('resourceType').value,'achievement');assert.deepEqual(views(),old.views);
+ assert.equal(snapshot().attributes.achievementType,'技术成果');assert.equal(snapshot().attributes.technicalTrack,'小分子药物');
+ category('cro');category('achievement');assert.deepEqual(views(),old.views);assert.equal(snapshot().attributes.achievementType,'技术成果');
+});
+test('new service editor cannot select retired achievement and preserves category drafts',()=>{
+ reset({resourceType:'cro',kind:'supply'});assert.ok(!control('resourceType').options.some(o=>o.value==='achievement'));
+ control('filter-serviceCapability').value='CMC研究';category('cdmo');control('filter-serviceCapability').value='大规模细胞培养';category('cro');
+ assert.equal(snapshot().attributes.serviceCapability,'CMC研究');assert.deepEqual(views(),[{audience:'manager',category:'cro',sortOrder:0}]);
+ category('cdmo');assert.equal(snapshot().attributes.serviceCapability,'大规模细胞培养');
+});
+test('investor multi-value indications preserve old source attributes',()=>{
+ reset({id:'old-project',resourceType:'project',attributes:{indications:['眼科'],researchStage:'1期临床',investorIndications:['肿瘤疾病','心血管系统']},views:[{audience:'investor',category:'project',sortOrder:1}]});
+ assert.deepEqual(snapshot().attributes.investorIndications,['肿瘤疾病','心血管系统']);assert.deepEqual(snapshot().attributes.indications,['眼科']);
+});
+test('historical achievement without views remains historical on reopen',()=>{
+ reset({id:'old-no-views',resourceType:'achievement',attributes:{achievementType:'技术成果',technicalTrack:'小分子药物'},views:[]});
+ assert.equal(control('resourceAudience').value,'manager');assert.equal(control('resourceType').value,'achievement');
+ assert.equal(snapshot().attributes.achievementType,'技术成果');assert.deepEqual(views(),[]);
+});
+test('pool editor retains custom industry and cooperation values',()=>{
+ reset({id:'custom-pool',resourceType:'project',kind:'supply',industries:['生物医药','自定义行业'],cooperationModes:['自定义合作'],views:[{audience:'pool',category:'project',sortOrder:3}]});
+ snapshot();assert.equal(control('industries').value,'生物医药，自定义行业');assert.equal(control('cooperationModes').value,'自定义合作');
+});
 if(failures)process.exitCode=1;

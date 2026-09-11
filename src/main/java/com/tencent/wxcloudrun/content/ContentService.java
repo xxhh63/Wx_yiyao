@@ -60,8 +60,12 @@ public class ContentService {
       allowed.addAll(Set.of("audience","category"));
       String audience=query.get("audience"),category=query.getOrDefault("category","all");
       var filters=schema.filters(audience,category);
+      List<String> visible=new ArrayList<>();
+      for(var entry:schema.get(audience).path("categories"))if(!entry.path("pending").asBoolean()&&!entry.path("value").asText().equals("all"))visible.add(entry.path("value").asText());
+      if(!category.equals("all")&&!visible.contains(category)&&(!admin||!schema.get(audience).path("legacyCategories").findValuesAsText("value").contains(category)))throw bad("该分类暂未开放");
       join="JOIN content_resource_view v ON v.resource_id=c.id";
       params.put("audience",audience);where.append(" AND v.audience=:audience");
+      if(category.equals("all")){where.append(" AND v.category IN (:visibleCategories)");params.put("visibleCategories",visible);}
       if(!category.equals("all")){where.append(" AND v.category=:category");params.put("category",category);}
       int index=0;
       for(var filter:filters) {
@@ -77,7 +81,7 @@ public class ContentService {
           if(field.equals("cooperation"))field="cooperationModes";
           String path=Set.of("industries","cooperationModes").contains(field)?"$."+field:"$.attributes."+field;
           if(!field.matches("[a-zA-Z][a-zA-Z0-9]*"))throw new IllegalStateException("Invalid catalog schema");
-          if(Set.of("industries","cooperationModes","indications").contains(field))where.append(" AND JSON_CONTAINS(JSON_EXTRACT(c.payload,'").append(path).append("'),JSON_QUOTE(:").append(pname).append("))");
+          if((Set.of("industries","cooperationModes").contains(field)||multipleAttribute(field)))where.append(" AND JSON_CONTAINS(JSON_EXTRACT(c.payload,'").append(path).append("'),JSON_QUOTE(:").append(pname).append("))");
           else where.append(" AND JSON_UNQUOTE(JSON_EXTRACT(c.payload,'").append(path).append("'))=:").append(pname);
         }
       }

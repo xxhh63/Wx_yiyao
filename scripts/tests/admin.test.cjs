@@ -63,11 +63,11 @@ assert.equal(typeof resourceCategories, 'function', 'resource editing starts wit
 assert.deepEqual(resourceCategories(schema, 'investor').map(c => c.value), ['project', 'mah', 'scene']);
 assert.deepEqual(resourceCategories(schema, 'enterprise').map(c => c.label), ['技术', '专利', 'MAH', '数据', '人才', '服务机构']);
 assert.ok(!resourceCategories(schema, 'scientist').some(c => c.value === 'finance'));
-assert.deepEqual(resourceCategories(schema, 'manager').map(c => c.value), ['achievement']);
-assert.deepEqual(resourceFilters(schema, 'investor', 'project').map(f => f.field), ['projectType', 'researchStage', 'indications']);
+assert.deepEqual(resourceCategories(schema, 'manager').map(c => c.value), ['cro','cdmo','solution','ip_service','financing_service']);
+assert.deepEqual(resourceFilters(schema, 'investor', 'project').map(f => f.field), ['kind', 'investorProjectType', 'investorResearchStage', 'investorIndications']);
 assert.ok(resourceFilters(schema, 'enterprise', 'mah').find(f => f.field === 'enterpriseApprovalStatus').options.some(o => o.value === '已获批'));
-assert.ok(!resourceFilters(schema, 'investor', 'mah').find(f => f.field === 'approvalStatus').options.some(o => o.value === '可委托生产'));
-assert.ok(!resourceFilters(schema, 'scientist', 'talent').find(f => f.field === 'talentType').options.some(o => o.value === '首席科学家'));
+assert.ok(!resourceFilters(schema, 'investor', 'mah').find(f => f.field === 'investorApprovalStatus').options.some(o => o.value === '可委托生产'));
+assert.ok(!resourceFilters(schema, 'scientist', 'talent').find(f => f.field === 'scientistTalentType').options.some(o => o.value === '首席科学家'));
 assert.deepEqual(resourceFilters(schema, 'enterprise', 'technology').find(f => f.field === 'enterpriseTechnologyField').storage, 'attributes');
 assert.deepEqual(resourceSelection(schema, { resourceType:'patent', views:[{audience:'scientist',category:'patent'}] }, 'investor'), { audience:'scientist', category:'patent' });
 assert.deepEqual(resourceSelection(schema, { resourceType:'project', views:[{audience:'pool',category:'project'}] }, 'investor'), { audience:'pool', category:'project' });

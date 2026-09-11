@@ -31,7 +31,7 @@ public class CatalogSchema {
   public Map<String,Set<String>> attributes(String type) {
     Map<String,Set<String>> result=new LinkedHashMap<>();
     schema.forEach(catalog -> {
-      // Preserve historical attributes used by shared resources without offering them as enterprise filters.
+      // Preserve historical attributes used by shared resources without offering them as current role filters.
       List<JsonNode> definitions=new ArrayList<>();
       catalog.path("filtersByCategory").path(type).forEach(definitions::add);
       catalog.path("preservedFiltersByCategory").path(type).forEach(definitions::add);
