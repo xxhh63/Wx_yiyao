@@ -84,3 +84,7 @@ location = /api/auth/session {
 - 更新时先构建与测试，备份上一版 JAR，替换 release/app.jar 后在宝塔依次重启两个项目，再核对 ready。失败则恢复上一版 JAR 与配置。
 - 历史 app_user 按 AppID 隔离，新小程序不会自动冒用旧 AppID 用户；业务资源继续共用。
 - 图片上传仍沿用现有 COS 配置；没有 COS 服务端凭据时不要宣称上传能力已迁移。
+
+## 本次部署记录
+
+详见 [2026-09-16 服务器验收](server-verification-2026-09-16.md)。
