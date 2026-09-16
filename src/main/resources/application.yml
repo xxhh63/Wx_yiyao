@@ -42,4 +42,6 @@ app:
     password-hash: ${ADMIN_PASSWORD_HASH:}
   wechat:
     appid: ${WECHAT_APPID:}
+    auth-mode: ${WECHAT_AUTH_MODE:cloud}
+    appsecret: ${WECHAT_APPSECRET:}
     trusted-ingress: ${WECHAT_TRUSTED_INGRESS:false}

@@ -42,6 +42,7 @@ public class AdminSecurityConfig {
           .authorizeHttpRequests(auth -> auth.requestMatchers("/admin", "/admin/**").denyAll()
               .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
               .requestMatchers(HttpMethod.POST, "/api/auth/session").permitAll()
+              .requestMatchers(HttpMethod.DELETE, "/api/auth/session").permitAll()
               .requestMatchers(HttpMethod.PUT, "/api/me/card").permitAll()
               .requestMatchers("/api/**").denyAll().anyRequest().permitAll());
     } else {
