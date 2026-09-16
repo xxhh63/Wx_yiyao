@@ -59,3 +59,15 @@ Content-Type: application/json
 核对了 [WxJava 的手机号服务接口](https://github.com/binarywang/WxJava/blob/develop/weixin-java-miniapp/src/main/java/cn/binarywang/wx/miniapp/api/WxMaUserService.java)及其 [实现](https://github.com/binarywang/WxJava/blob/develop/weixin-java-miniapp/src/main/java/cn/binarywang/wx/miniapp/api/impl/WxMaUserServiceImpl.java)。
 当前只新增两种微信 API 请求，继续使用现有 Java HttpClient、Jackson、MyBatis 和 Spring Session；没有新增 SDK、JWT 或 Redis。
 微信官方文档页面本次抓取不可用，服务端调用凭据已另外做实际预检；完整手机号授权仍待用户真机操作。
+
+## 2026-09-16 部署结果
+
+- 后端功能提交 `5cd233e` 已推送 GitHub master，并部署到服务器；源码与 JAR 均已同步。服务器拉取 GitHub 网络阻塞时改用已推送提交的 Git bundle 快进，同一提交无额外源码改动。
+- 业务库 `jiaoyi_zx` 已执行 006：新增表的四个字段及外键核对通过；原 app_user 2 行、user_card 0 行未变化，手机号绑定初始为 0 行。
+- 新 JAR SHA256：`fd7bfefb6247a9db70223182d0fe0bb2c382a7490387bd416c403a84d9874253`。
+- 回退 JAR：`/www/wwwroot/trade exchange/release/app-before-phone-23ce8f9.jar`。通过宝塔重启 jiaoyi-api、jiaoyi-admin 后，两个服务 ready 均 200。
+- 本地 Maven package：31 项发现，13 项通过，18 项独立 MySQL 测试跳过，0 失败/错误。本轮没有以生产库运行 CRUD 测试。
+- 正式 HTTPS：health、ready、home、后台登录页面均 200；手机号空授权码输入 400；匿名及管理员 cookie 读取小程序名片均 401；私密配置路径 404。
+- 管理后台登录、资源/主推/广告/政策只读接口、退出均 200，cookie 保持 Secure。
+- 服务器验证记录：`/root/yiyao-migration/phone-login-verification.json`。
+- 尚未代替用户执行真实手机号授权；完整手机号绑定、真机展示及再次登录仍需要用户主动点击微信授权弹窗后验收。
