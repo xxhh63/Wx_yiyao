@@ -2,6 +2,7 @@
 
 二期已增加首页内容接口、资源/资讯/机构管理、管理员网页及手动 SQL 迁移包。小程序身份识别、名片保存恢复保持一期契约。
 
+- [微信手机号快速验证登录](docs/wechat-phone-login.md)
 - [Ubuntu / 宝塔服务器迁移](docs/server-deployment.md)
 - [二期部署与后台使用](docs/phase2-deployment.md)
 - [SQL导入步骤与核对](migration/README.md)

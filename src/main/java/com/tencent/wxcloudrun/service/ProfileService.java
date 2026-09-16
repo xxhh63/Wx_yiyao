@@ -29,6 +29,17 @@ public class ProfileService {
     return new Session(true, user.id(), user.createdAt().toInstant(ZoneOffset.UTC));
   }
 
+  public ProfileMapper.PhoneRow phone(Identity identity) {
+    return mapper.findPhone(identity.appid(), identity.openid());
+  }
+
+  @Transactional
+  public Session phoneSession(Identity identity, ProfileMapper.PhoneRow phone) {
+    var user = ensureUser(identity);
+    mapper.savePhone(user.id(), phone);
+    return new Session(true, user.id(), user.createdAt().toInstant(ZoneOffset.UTC));
+  }
+
   public CardSnapshot card(Identity identity) {
     var row = mapper.findCard(identity.appid(), identity.openid());
     if (row == null) {

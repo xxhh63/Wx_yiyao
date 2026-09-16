@@ -37,6 +37,21 @@ public interface ProfileMapper {
       """)
   void saveCard(@Param("userId") String userId, @Param("v") Map<String, String> values);
 
+  @Select("""
+      SELECT p.phone_number, p.country_code FROM app_user_phone p
+      JOIN app_user u ON u.id = p.user_id WHERE u.appid = #{appid} AND u.openid = #{openid}
+      """)
+  PhoneRow findPhone(@Param("appid") String appid, @Param("openid") String openid);
+
+  @Insert("""
+      INSERT INTO app_user_phone (user_id, phone_number, country_code, verified_at)
+      VALUES (#{userId}, #{phone.phoneNumber}, #{phone.countryCode}, CURRENT_TIMESTAMP(6))
+      ON DUPLICATE KEY UPDATE phone_number = #{phone.phoneNumber},
+          country_code = #{phone.countryCode}, verified_at = CURRENT_TIMESTAMP(6)
+      """)
+  void savePhone(@Param("userId") String userId, @Param("phone") PhoneRow phone);
+
+  record PhoneRow(String phoneNumber, String countryCode) {}
   record UserRow(String id, LocalDateTime createdAt) {}
   record CardRow(String name, String phone, String company, String position, String address,
                  String email, String wechat, String intro, LocalDateTime savedAt) {}

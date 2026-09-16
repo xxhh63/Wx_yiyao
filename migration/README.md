@@ -69,3 +69,7 @@ git diff --check
 导出脚本不会覆盖运行时 `src/main/resources/catalog-schema.json`，也不会生成或覆盖增量 `004_enterprise_categories.sql`、`005_role_categories.sql`。默认从冻结 `phase2-source.json` 重建旧迁移产物，不读取可能已变为接口页面的前端文件。仅在明确要更新迁移来源时，使用 `node scripts/export-phase2.cjs --source <原前端源码目录>` 重新捕获，之后必须重新核对 hash、别名和计数。不要对已经接入 API 的运行前端重做旧种子导出。
 
 可选真实 MySQL 回归：设置 `PHASE2_MYSQL_EXE` 为 mysql.exe 路径，`PHASE2_MYSQL_DEFAULTS` 为私有连接配置文件路径后，执行 `node scripts/export-phase2.test.cjs --mysql`。该检查固定连接 `127.0.0.1:13316/wx_yiyao_test`，只创建和清理自身 `phase2check_<进程ID>_` 前缀表，不用于云库或生产库；配置文件内容不得写入 Git。
+
+## 006 微信手机号快速验证登录
+
+自建服务器部署手机号登录版本前，在业务库执行 006_wechat_phone.sql；仅新增 app_user_phone 表，保留 app_user 与 user_card 数据。详情见 ../docs/wechat-phone-login.md。

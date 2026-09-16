@@ -1,5 +1,6 @@
 package com.tencent.wxcloudrun.config;
 
+import com.tencent.wxcloudrun.dao.ProfileMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,10 +18,11 @@ public class WechatIdentityResolver {
   private final String appid;
   private final boolean trustedIngress;
   private final boolean serverMode;
+  private final ProfileMapper profiles;
 
   public WechatIdentityResolver(@Value("${app.wechat.appid:}") String appid,
       @Value("${app.wechat.trusted-ingress:false}") boolean trustedIngress,
-      @Value("${app.wechat.auth-mode:cloud}") String mode) {
+      @Value("${app.wechat.auth-mode:cloud}") String mode, ProfileMapper profiles) {
     if (!mode.equals("cloud") && !mode.equals("server")) {
       throw new IllegalStateException("WECHAT_AUTH_MODE must be cloud or server");
     }
@@ -30,13 +32,18 @@ public class WechatIdentityResolver {
     this.appid = appid;
     this.trustedIngress = trustedIngress;
     this.serverMode = mode.equals("server");
+    this.profiles = profiles;
   }
 
   public Identity resolve(HttpServletRequest request) {
     if (serverMode) {
       var session = currentServerSession(request);
       if (session == null) throw unauthorized();
-      return new Identity(appid, (String) session.getAttribute(SESSION_OPENID));
+      String openid = (String) session.getAttribute(SESSION_OPENID);
+      if (profiles.findPhone(appid, openid) == null) {
+        throw new ResponseStatusException(HttpStatus.PRECONDITION_REQUIRED, "请授权手机号后登录");
+      }
+      return new Identity(appid, openid);
     }
     // Header values are not signatures. Enable only after all untrusted ingress is closed.
     if (!trustedIngress) {

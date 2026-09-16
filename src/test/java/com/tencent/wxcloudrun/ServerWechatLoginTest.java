@@ -37,7 +37,7 @@ class ServerWechatLoginTest {
       assertEquals(401, call(app, "GET", "/api/me/card", null, null).statusCode());
       assertEquals(401, call(app, "GET", "/api/me/card", null, null,
           Map.of("X-WX-APPID", APPID, "X-WX-OPENID", "alice", "X-WX-SOURCE", "forged")).statusCode());
-      var login = call(app, "POST", "/api/auth/session", "{\"code\":\"alice-code\"}", null);
+      var login = call(app, "POST", "/api/auth/session", "{\"code\":\"alice-code\",\"phoneCode\":\"alice-phone\"}", null);
       var account = data(login);
       aliceToken = account.path("accessToken").asText();
       aliceId = account.path("userId").asText();
@@ -50,7 +50,7 @@ class ServerWechatLoginTest {
       assertFalse(account.has("openid"));
       assertEquals(200, call(app, "PUT", "/api/me/card",
           "{\"values\":{\"name\":\"新小程序用户 😀\",\"company\":\"测试科研机构\"}}", aliceToken).statusCode());
-      String bobToken = data(call(app, "POST", "/api/auth/session", "{\"code\":\"bob-code\"}", null)).path("accessToken").asText();
+      String bobToken = data(call(app, "POST", "/api/auth/session", "{\"code\":\"bob-code\",\"phoneCode\":\"bob-phone\"}", null)).path("accessToken").asText();
       assertTrue(data(call(app, "GET", "/api/me/card", null, bobToken)).path("savedAt").isNull());
       assertEquals("新小程序用户 😀", data(call(app, "GET", "/api/me/card", null, aliceToken,
           Map.of("X-WX-OPENID", "bob"))).at("/values/name").asText());
@@ -99,7 +99,7 @@ class ServerWechatLoginTest {
     String url = url("expiry");
     String token;
     try (var app = start(url, wechat(), APPID)) {
-      token = data(call(app, "POST", "/api/auth/session", "{\"code\":\"alice-code\"}", null)).path("accessToken").asText();
+      token = data(call(app, "POST", "/api/auth/session", "{\"code\":\"alice-code\",\"phoneCode\":\"alice-phone\"}", null)).path("accessToken").asText();
       try (var c = DriverManager.getConnection(url, "sa", "");
            var statement = c.prepareStatement("UPDATE SPRING_SESSION SET LAST_ACCESS_TIME=0,EXPIRY_TIME=0 WHERE SESSION_ID=?")) {
         statement.setString(1, token);
@@ -114,27 +114,148 @@ class ServerWechatLoginTest {
     }
   }
 
+
+  @Test
+  void phoneConsentIsRequiredAndPersistsWithoutChangingEditableCardPhone() throws Exception {
+    String url = url("phone");
+    String userId;
+    try (var app = start(url, wechat(), APPID)) {
+      var required = call(app, "POST", "/api/auth/session", "{\"code\":\"alice-login\"}", null);
+      assertEquals(428, required.statusCode());
+      assertTrue(required.headers().firstValue("X-Auth-Token").isEmpty());
+      assertEquals(0, count(url, "SELECT COUNT(*) FROM app_user"));
+      for (String body : List.of("{\"code\":\"alice\",\"phoneCode\":null}",
+          "{\"code\":\"alice\",\"phoneCode\":\"\"}",
+          "{\"code\":\"alice\",\"phoneCode\":\"x\",\"phoneNumber\":\"13800000001\"}")) {
+        assertEquals(400, call(app, "POST", "/api/auth/session", body, null).statusCode());
+      }
+      var login = data(call(app, "POST", "/api/auth/session",
+          "{\"code\":\"alice-login\",\"phoneCode\":\"alice-phone\"}", null));
+      userId = login.path("userId").asText();
+      assertTrue(login.path("phoneVerified").asBoolean());
+      assertEquals("13800000001", login.path("phoneNumber").asText());
+      assertEquals("86", login.path("countryCode").asText());
+      String token = login.path("accessToken").asText();
+      assertEquals("", data(call(app, "GET", "/api/me/card", null, token)).at("/values/phone").asText());
+      data(call(app, "PUT", "/api/me/card", "{\"values\":{\"phone\":\"010-12345678\"}}", token));
+      assertEquals("010-12345678", data(call(app, "GET", "/api/me/card", null, token)).at("/values/phone").asText());
+      assertEquals(1, count(url, "SELECT COUNT(*) FROM app_user_phone"));
+      data(call(app, "DELETE", "/api/auth/session", null, token));
+    }
+    try (var app = start(url, wechat(), APPID)) {
+      var login = data(call(app, "POST", "/api/auth/session", "{\"code\":\"alice-returning\"}", null));
+      assertEquals(userId, login.path("userId").asText());
+      assertEquals("13800000001", login.path("phoneNumber").asText());
+      String token = login.path("accessToken").asText();
+      assertEquals("010-12345678", data(call(app, "GET", "/api/me/card", null, token)).at("/values/phone").asText());
+      try (var c = DriverManager.getConnection(url, "sa", ""); var statement = c.createStatement()) {
+        assertEquals(1, statement.executeUpdate("DELETE FROM app_user_phone"));
+      }
+      assertEquals(428, call(app, "GET", "/api/me/card", null, token).statusCode());
+      assertEquals(428, call(app, "POST", "/api/auth/session", "{\"code\":\"alice-unbound\"}", token).statusCode());
+      assertEquals(200, call(app, "DELETE", "/api/auth/session", null, token).statusCode());
+    }
+  }
+
+  @Test
+  void phoneCodesAreSingleUseAndFailuresNeverBindOrLeakSecrets() throws Exception {
+    String url = url("phone-errors");
+    HttpClient wechat = wechat();
+    try (var app = start(url, wechat, APPID)) {
+      for (var entry : Map.of("invalid-phone", 400, "busy-phone", 503, "timeout-phone", 503,
+          "wrong-app-phone", 503, "bob-phone", 400, "bad-number-phone", 503).entrySet()) {
+        var response = call(app, "POST", "/api/auth/session",
+            "{\"code\":\"alice-login\",\"phoneCode\":\"" + entry.getKey() + "\"}", null);
+        assertEquals(entry.getValue(), response.statusCode(), response.body());
+        assertTrue(response.headers().firstValue("X-Auth-Token").isEmpty());
+        assertFalse(response.body().contains("test-api-token"));
+        assertFalse(response.body().contains("test-app-secret"));
+        assertFalse(response.body().contains("13800000001"));
+      }
+      assertEquals(0, count(url, "SELECT COUNT(*) FROM app_user"));
+      assertEquals(0, count(url, "SELECT COUNT(*) FROM app_user_phone"));
+      var login = data(call(app, "POST", "/api/auth/session",
+          "{\"code\":\"alice-login\",\"phoneCode\":\"retry-phone\"}", null));
+      String token = login.path("accessToken").asText();
+      assertFalse(login.toString().contains("test-api-token"));
+      var duplicate = call(app, "POST", "/api/auth/session",
+          "{\"code\":\"alice-again\",\"phoneCode\":\"retry-phone\"}", token);
+      assertEquals(400, duplicate.statusCode());
+      assertEquals(200, call(app, "GET", "/api/me/card", null, token).statusCode());
+      assertEquals(1, count(url, "SELECT COUNT(*) FROM app_user_phone"));
+      verify(wechat, times(2)).send(argThat(req -> req.uri().getPath().equals("/cgi-bin/stable_token")), any(HttpResponse.BodyHandler.class));
+    }
+  }
+
+  private int count(String url, String sql) throws Exception {
+    try (var c = DriverManager.getConnection(url, "sa", ""); var s = c.createStatement(); var r = s.executeQuery(sql)) {
+      assertTrue(r.next()); return r.getInt(1);
+    }
+  }
+
   @SuppressWarnings("unchecked")
   private HttpClient wechat() throws Exception {
     HttpClient client = mock(HttpClient.class);
+    var issued = new java.util.concurrent.atomic.AtomicInteger();
+    var used = java.util.concurrent.ConcurrentHashMap.<String>newKeySet();
     doAnswer(invocation -> {
       HttpRequest request = invocation.getArgument(0);
       assertEquals("https", request.uri().getScheme());
       assertEquals("api.weixin.qq.com", request.uri().getHost());
-      assertEquals("/sns/jscode2session", request.uri().getPath());
-      assertTrue(request.uri().getRawQuery().contains("grant_type=authorization_code"));
-      String query = request.uri().getRawQuery();
-      if (query.contains("timeout-code")) throw new java.net.http.HttpTimeoutException("must not leak " + request.uri());
-      String body = query.contains("invalid-code") ? "{\"errcode\":40029,\"errmsg\":\"invalid code\"}"
-          : query.contains("busy-code") ? "{\"errcode\":-1,\"errmsg\":\"busy\"}"
-          : query.contains("malformed-code") ? "{\"openid\":\"alice\"}"
-          : "{\"openid\":\"" + (query.contains("bob-code") ? "bob" : "alice") + "\",\"session_key\":\"test-session-key\"}";
+      String body;
+      if (request.uri().getPath().equals("/sns/jscode2session")) {
+        assertTrue(request.uri().getRawQuery().contains("grant_type=authorization_code"));
+        String query = request.uri().getRawQuery();
+        if (query.contains("timeout-code")) throw new java.net.http.HttpTimeoutException("must not leak " + request.uri());
+        body = query.contains("invalid-code") ? "{\"errcode\":40029,\"errmsg\":\"invalid code\"}"
+            : query.contains("busy-code") ? "{\"errcode\":-1,\"errmsg\":\"busy\"}"
+            : query.contains("malformed-code") ? "{\"openid\":\"alice\"}"
+            : "{\"openid\":\"" + (query.contains("bob-code") ? "bob" : "alice") + "\",\"session_key\":\"test-session-key\"}";
+      } else {
+        assertEquals("POST", request.method());
+        JsonNode input = JSON.readTree(requestBody(request));
+        if (request.uri().getPath().equals("/cgi-bin/stable_token")) {
+          assertEquals("client_credential", input.path("grant_type").asText());
+          assertEquals(APPID, input.path("appid").asText());
+          assertEquals("test-app-secret", input.path("secret").asText());
+          assertEquals(issued.get() > 0, input.path("force_refresh").asBoolean());
+          body = "{\"access_token\":\"test-api-token-" + issued.incrementAndGet() + "\",\"expires_in\":7200}";
+        } else {
+          assertEquals("/wxa/business/getuserphonenumber", request.uri().getPath());
+          assertTrue(request.uri().getRawQuery().contains("access_token=test-api-token-"));
+          String code = input.path("code").asText();
+          assertTrue(input.path("openid").isTextual(), "phone request must bind the verified openid");
+          if (code.equals("timeout-phone")) throw new java.net.http.HttpTimeoutException("must not leak " + request.uri());
+          if (code.equals("invalid-phone") || code.equals("bob-phone") && !input.path("openid").asText().equals("bob")) body = "{\"errcode\":40029}";
+          else if (code.equals("busy-phone")) body = "{\"errcode\":-1}";
+          else if (code.equals("retry-phone") && issued.get() == 1) body = "{\"errcode\":40001}";
+          else if (!used.add(code)) body = "{\"errcode\":40163}";
+          else {
+            String number = code.equals("bad-number-phone") ? "not-a-phone" : "13800000001";
+            body = "{\"errcode\":0,\"phone_info\":{\"phoneNumber\":\"" + number
+                + "\",\"purePhoneNumber\":\"" + number + "\",\"countryCode\":\"86\",\"watermark\":{\"appid\":\""
+                + (code.equals("wrong-app-phone") ? "wx0000000000000000" : APPID) + "\",\"timestamp\":1789530000}}}";
+          }
+        }
+      }
       HttpResponse<String> response = mock(HttpResponse.class);
       when(response.statusCode()).thenReturn(200);
       when(response.body()).thenReturn(body);
       return response;
     }).when(client).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
     return client;
+  }
+
+  private String requestBody(HttpRequest request) throws Exception {
+    var result = new java.util.concurrent.CompletableFuture<String>();
+    var bytes = new java.io.ByteArrayOutputStream();
+    request.bodyPublisher().orElseThrow().subscribe(new java.util.concurrent.Flow.Subscriber<java.nio.ByteBuffer>() {
+      public void onSubscribe(java.util.concurrent.Flow.Subscription subscription) { subscription.request(Long.MAX_VALUE); }
+      public void onNext(java.nio.ByteBuffer buffer) { byte[] part = new byte[buffer.remaining()]; buffer.get(part); bytes.writeBytes(part); }
+      public void onError(Throwable error) { result.completeExceptionally(error); }
+      public void onComplete() { result.complete(bytes.toString(java.nio.charset.StandardCharsets.UTF_8)); }
+    });
+    return result.get(2, java.util.concurrent.TimeUnit.SECONDS);
   }
 
   private String url(String name) {
