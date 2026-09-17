@@ -78,7 +78,7 @@ public final class ImportDocumentWorker {
         for (int i = 0; i < Math.min(10, workbook.getNumberOfSheets()) && text.length() < MAX_TEXT; i++) {
           append("\n[工作表 " + (i + 1) + "]\n"); int rows = 0, cells = 0;
           for (var row : workbook.getSheetAt(i)) { if (++rows > 2000 || cells > 20_000 || text.length() >= MAX_TEXT) {warnings.add("表格过长，仅提取前2000行/20000单元格及60000字符");break;}
-            for (var cell : row) { if (++cells > 20_000) break; append(formatter.formatCellValue(cell) + "\t"); } append("\n"); }
+            for (var cell : row) { if (++cells > 20_000) break; append(cell.getAddress() + ": " + formatter.formatCellValue(cell) + "\t"); } append("\n"); }
         }
         if (workbook.getNumberOfSheets() > 10) warnings.add("仅提取前10个工作表");
       } }

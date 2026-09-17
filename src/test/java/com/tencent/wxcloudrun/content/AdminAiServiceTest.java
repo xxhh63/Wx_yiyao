@@ -46,6 +46,51 @@ class AdminAiServiceTest {
     }
   }
 
+  @Test void refinementsKeepHumanViewsAndAttributesOutsideTheTargetAudience() throws Exception {
+    try (Upstream upstream=new Upstream(new AtomicReference<>(),"""
+        {"title":"新标题","attributes":{"enterpriseResearchStage":"临床研究","scientistResearchStage":"临床前研究"}}
+        ""","stop")) {
+      var input=request("resources","修改标题并补充企业研发阶段");
+      input.putObject("context").put("audience","enterprise").put("resourceType","technology");
+      input.set("previousDraft",json.readTree("""
+          {"title":"旧标题","resourceType":"technology",
+           "views":[{"audience":"enterprise","category":"technology"},{"audience":"scientist","category":"technology"}],
+           "attributes":{"enterpriseResearchStage":"临床前研究","scientistResearchStage":"临床研究"}}
+          """));
+      var draft=service("test",upstream.uri()).draft(input,null).path("draft");
+      assertEquals("新标题",draft.path("title").asText());
+      assertEquals(2,draft.path("views").size());
+      assertEquals("scientist",draft.at("/views/1/audience").asText());
+      assertEquals("临床研究",draft.at("/attributes/enterpriseResearchStage").asText());
+      assertEquals("临床研究",draft.at("/attributes/scientistResearchStage").asText(),"The model cannot overwrite a different audience's human field");
+    }
+  }
+
+  @Test void sparseAttributeRefinementUsesTheExistingResourceType() throws Exception {
+    try (Upstream upstream=new Upstream(new AtomicReference<>(),"{\"attributes\":{\"enterpriseResearchStage\":\"临床研究\"}}","stop")) {
+      var input=request("resources","补充：已进入临床研究");
+      input.putObject("context").put("audience","enterprise");
+      var previous=input.putObject("previousDraft").put("resourceType","technology");
+      previous.putArray("views").addObject().put("audience","enterprise").put("category","technology");
+      previous.putObject("attributes").put("enterpriseResearchStage","临床前研究");
+      var draft=service("test",upstream.uri()).draft(input,null).path("draft");
+      assertEquals("technology",draft.path("resourceType").asText());
+      assertEquals("临床研究",draft.at("/attributes/enterpriseResearchStage").asText());
+    }
+  }
+  @Test void changingAudienceDropsAnUnsupportedPreviousResourceType() throws Exception {
+    try (Upstream upstream=new Upstream(new AtomicReference<>(),"{\"title\":\"新标题\"}","stop")) {
+      var input=request("resources","改为企业专区，类型由材料确认");
+      input.putObject("context").put("audience","enterprise").put("resourceType","");
+      var previous=input.putObject("previousDraft").put("resourceType","project");
+      previous.putArray("views").addObject().put("audience","investor").put("category","project");
+      previous.putObject("attributes").put("investorProjectType","早期创新药项目");
+      var draft=service("test",upstream.uri()).draft(input,null).path("draft");
+      assertFalse(draft.has("resourceType"));
+      assertFalse(draft.has("views"));
+      assertFalse(draft.path("attributes").has("investorProjectType"));
+    }
+  }
   @Test void incompleteModelResponseIsNeverPresentedAsSuccess() throws Exception {
     try (Upstream upstream = new Upstream(new AtomicReference<>(), "{\"title\":\"partial\"}", "length")) {
       var failure = assertThrows(ResponseStatusException.class,
@@ -98,8 +143,10 @@ class AdminAiServiceTest {
       var input=request("resources","改为MAH类");
       var previous=input.putObject("previousDraft").put("title","资源").put("resourceType","project");
       previous.putArray("views").addObject().put("audience","investor").put("category","project");
+      previous.putObject("attributes").put("investorProjectType","早期创新药项目");
       var draft=service("test",upstream.uri()).draft(input,null).path("draft");
       assertEquals("mah",draft.path("resourceType").asText());
+      assertFalse(draft.path("attributes").has("investorProjectType"));
       for(var view:draft.path("views"))assertEquals("mah",view.path("category").asText());
     }
   }

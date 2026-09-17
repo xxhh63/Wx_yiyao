@@ -1,6 +1,6 @@
 # Ubuntu / 宝塔服务器部署
 
-本方案给新小程序 `wxa64654c604b3af31` 提供后端，复用原云托管业务表、内容接口和管理后台。旧云托管模式仍可使用。数据库已按全量导出迁移到 `jiaoyi_zx`；不要再次执行清空/覆盖导入。
+本方案给新小程序 `wxa64654c604b3af31` 提供后端，沿用已迁移的业务表、内容接口和管理后台；现行业务只走自建服务器，微信提供登录、手机号授权等平台能力。数据库已按全量导出迁移到 `jiaoyi_zx`；不要再次执行清空/覆盖导入。
 
 ## 架构与目录
 
@@ -44,8 +44,8 @@ AppSecret 从 `/root/yiyao-migration/wechat-appsecret.txt` 安全读取；不得
 公共内容接口路径和响应保持原样，前端使用 `wx.request` 访问 HTTPS 域名。微信公众平台需为新 AppID 配置 request 合法域名。
 
 1. `wx.login` 获取一次性 code。
-2. `POST /api/auth/session`，JSON 必须为 `{"code":"微信返回的code"}`。
-3. 返回 `data.authenticated/userId/createdAt/accessToken/expiresIn`；expiresIn 为 7200 秒无活动期限。后端直接与微信 code2Session 交换，openid 和 session_key 不下发。
+2. 首次授权使用 `POST /api/auth/session`，JSON 为 `{"code":"wx.login返回的code","phoneCode":"手机号组件返回的code"}`。已绑定账号可仅提交新的 code；未绑定账号缺少 phoneCode 返回 428。详见 [手机号登录](wechat-phone-login.md)。
+3. 返回 `data.authenticated/userId/createdAt/accessToken/expiresIn/phoneVerified/phoneNumber/countryCode`；expiresIn 为 7200 秒无活动期限。后端直接与微信 code2Session 交换，openid 和 session_key 不下发。
 4. `GET /api/me/card`、`PUT /api/me/card` 携带 `X-Auth-Token: accessToken`。保存体仍是 `{"values":{...}}`。
 5. 401 最多重新 wx.login 并重试一次；身份变化时丢弃旧用户名片缓存，不能把旧名片自动保存给新用户。
 6. `DELETE /api/auth/session` 撤销当前会话，返回 `data.authenticated=false`。没有有效会话时可以重复退出；跨 AppID/管理员会话会被拒绝。
@@ -80,7 +80,7 @@ location = /api/auth/session {
 - 未登录名片接口必须 401；伪造 X-WX-* 不能登录。
 - `/admin/` 可显示登录页，管理员登录后能读取资源；未登录管理 API 仍被拦截。
 - 真机完成登录 → 保存名片 → 退出/重新登录 → 恢复，才算真实微信登录验收。模拟微信接口的本地测试不等于真机验证。
-- 后端本地 `mvn test` 包括云入口回归、管理员安全和服务器登录测试；需要独立 MySQL 的内容测试不能对生产迁移库运行。
+- 后端本地 `mvn test` 验证管理员安全、服务器登录、内容与 AI 录入；需要独立 MySQL 的内容测试不能对生产迁移库运行。
 - 更新时先构建与测试，备份上一版 JAR，替换 release/app.jar 后在宝塔依次重启两个项目，再核对 ready。失败则恢复上一版 JAR 与配置。
 - 历史 app_user 按 AppID 隔离，新小程序不会自动冒用旧 AppID 用户；业务资源继续共用。
 - 图片上传仍沿用现有 COS 配置；没有 COS 服务端凭据时不要宣称上传能力已迁移。

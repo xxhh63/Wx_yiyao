@@ -124,6 +124,48 @@ class AdminSecurityTest {
   }
 
   @Test
+  void expiredCsrfSessionsRejectWritesAndCanRefreshBeforeLogin() throws Exception {
+    String url = url("csrf-expiry");
+    try (var app = start(url, "admin", true)) {
+      var anonymous = call(app, "GET", "/admin/api/session", null, null, null);
+      String anonymousCookie = cookie(anonymous);
+      String oldCsrf = data(anonymous).path("csrfToken").asText();
+      try (var connection = DriverManager.getConnection(url, "sa", ""); var statement = connection.createStatement()) {
+        assertEquals(1, statement.executeUpdate("UPDATE SPRING_SESSION SET LAST_ACCESS_TIME=0, EXPIRY_TIME=0"));
+      }
+      var expiredLogin = call(app, "POST", "/admin/api/session", "username=editor&password=password", anonymousCookie, oldCsrf);
+      assertEquals(403, expiredLogin.statusCode(), expiredLogin.body());
+      String recoveryCookie = expiredLogin.headers().firstValue("set-cookie")
+          .map(value -> value.split(";", 2)[0]).orElse(anonymousCookie);
+      var refreshed = call(app, "GET", "/admin/api/session", null, recoveryCookie, null);
+      var refreshedState = data(refreshed);
+      assertFalse(refreshedState.path("authenticated").asBoolean());
+      String freshCsrf = refreshedState.path("csrfToken").asText();
+      assertFalse(freshCsrf.isBlank());
+      assertNotEquals(oldCsrf, freshCsrf);
+      String refreshedCookie = refreshed.headers().firstValue("set-cookie")
+          .map(value -> value.split(";", 2)[0]).orElse(recoveryCookie);
+      var loggedIn = call(app, "POST", "/admin/api/session", "username=editor&password=password", refreshedCookie, freshCsrf);
+      assertEquals(200, loggedIn.statusCode(), loggedIn.body());
+      String authenticatedCookie = cookie(loggedIn);
+      var authenticated = data(call(app, "GET", "/admin/api/session", null, authenticatedCookie, null));
+      assertTrue(authenticated.path("authenticated").asBoolean());
+      String authenticatedCsrf = authenticated.path("csrfToken").asText();
+      try (var connection = DriverManager.getConnection(url, "sa", ""); var statement = connection.createStatement()) {
+        assertEquals(1, statement.executeUpdate("UPDATE SPRING_SESSION SET LAST_ACCESS_TIME=0, EXPIRY_TIME=0 WHERE PRINCIPAL_NAME='editor'"));
+      }
+      var expiredWrite = call(app, "PUT", "/admin/api/resources/expired-session-probe", null, authenticatedCookie, authenticatedCsrf);
+      assertEquals(403, expiredWrite.statusCode(), expiredWrite.body());
+      String expiredCookie = expiredWrite.headers().firstValue("set-cookie")
+          .map(value -> value.split(";", 2)[0]).orElse(authenticatedCookie);
+      var loggedOut = data(call(app, "GET", "/admin/api/session", null, expiredCookie, null));
+      assertFalse(loggedOut.path("authenticated").asBoolean());
+      assertFalse(loggedOut.path("csrfToken").asText().isBlank());
+      assertNotEquals(authenticatedCsrf, loggedOut.path("csrfToken").asText());
+    }
+  }
+
+  @Test
   void secureCookieIsDefaultAndAdminNeverRegistersWechatIdentity() throws Exception {
     try (var app = start(url("secure"), "admin", true, true)) {
       var response = call(app, "GET", "/admin/api/session", null, null, null);

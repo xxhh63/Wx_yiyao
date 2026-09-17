@@ -71,27 +71,38 @@ public class AdminAiService {
       var warnings=new ArrayList<String>();
       var document=file==null?new ImportDocumentReader.Document("",List.of(),List.of()):documents.read(file);
       warnings.addAll(document.warnings());
-      var prior=schema.normalize(collection,withoutManualFields(previous),context,warnings);
+      // A target audience restricts model suggestions, not existing human choices in other audiences.
+      ObjectNode retainedContext=context.isObject()?((ObjectNode)context).deepCopy():json.createObjectNode();
+      String retainedType=context.path("resourceType").asText();
+      if(retainedType.isEmpty())retainedType=previous.path("resourceType").asText();
+      for(var type:definition.at("/fields/resourceType/enum"))
+        if(type.asText().equals(retainedType)){retainedContext.remove("audience");break;}
+      var prior=schema.normalize(collection,withoutManualFields(previous),retainedContext,warnings);
       restoreManualFields(collection,previous,prior,warnings);
       ObjectNode proposed=json.createObjectNode();
       if(!text.isBlank()||!document.text().isBlank()||!document.images().isEmpty()) {
         var material=json.createObjectNode().put("collection",collection).put("text",text).put("documentText",document.text());
         material.set("schema",definition);material.set("context",context);material.set("previousDraft",prior);
         JsonNode answer=ask(material,document.images());
-        proposed=schema.normalize(collection,answer.path("draft"),context,warnings);
+        ObjectNode suggestion=((ObjectNode)answer.path("draft")).deepCopy();
+        if(collection.equals("resources")&&!hasInformation(suggestion.get("resourceType"))&&prior.has("resourceType"))
+          suggestion.set("resourceType",prior.get("resourceType"));
+        proposed=schema.normalize(collection,suggestion,context,warnings);
         if(proposed.isEmpty())warnings.add("没有识别到可填入的信息，请人工补充");
       } else warnings.add("没有识别到可填入的信息，请人工补充");
       // Sparse refinements preserve untouched human edits. The model cannot overwrite manual URLs or related IDs.
       ObjectNode merged=prior.deepCopy();
       proposed.fields().forEachRemaining(entry->{
         if(!hasInformation(entry.getValue()))return;
-        if(entry.getValue().isObject()&&merged.path(entry.getKey()).isObject()) {
+        if(entry.getKey().equals("views")&&merged.path("views").isArray()) {
+          ((ArrayNode)merged.get("views")).addAll((ArrayNode)entry.getValue());
+        } else if(entry.getValue().isObject()&&merged.path(entry.getKey()).isObject()) {
           ObjectNode nested=((ObjectNode)merged.get(entry.getKey())).deepCopy();
           entry.getValue().fields().forEachRemaining(field->{if(hasInformation(field.getValue()))nested.set(field.getKey(),field.getValue());});
           merged.set(entry.getKey(),nested);
         } else merged.set(entry.getKey(),entry.getValue());
       });
-      ObjectNode validated=schema.normalize(collection,withoutManualFields(merged),context,warnings);
+      ObjectNode validated=schema.normalize(collection,withoutManualFields(merged),retainedContext,warnings);
       restoreManualFields(collection,previous,validated,warnings);
       var result=json.createObjectNode().put("collection",collection).put("model",MODEL)
           .put("message","已生成待复核表单，请核对后手动保存或发布");

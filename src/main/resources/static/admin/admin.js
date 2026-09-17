@@ -114,6 +114,13 @@ if (typeof document !== 'undefined') {
     if (!response.ok || result.code !== 0) {
       const error = new Error(result.errorMsg || `操作失败（${response.status}），请稍后重试。`); error.status = response.status;
       if (response.status === 401 && path !== 'session') { state.session = null; showLogin('登录已过期，请重新登录。当前编辑内容已保留。'); refreshSession().catch(() => {}); }
+      if (response.status === 403 && path !== 'session') {
+        // An expired session fails CSRF before authentication; never replay the write.
+        try {
+          const session = await refreshSession();
+          if (!session.authenticated) { error.message = '登录已过期，请重新登录。当前编辑内容已保留。'; showLogin(error.message); }
+        } catch { /* Preserve the original failure and the unsaved editor. */ }
+      }
       throw error;
     }
     return result.data;
@@ -124,20 +131,20 @@ if (typeof document !== 'undefined') {
   $('login-form').addEventListener('submit', async event => {
     event.preventDefault(); $('login-submit').disabled = true; message($('login-error'), '');
     try {
-      if (!state.session?.csrfToken) await refreshSession();
+      await refreshSession();
       await api('session', { method: 'POST', body: new URLSearchParams({ username: $('login-username').value.trim(), password: $('login-password').value }) });
       await refreshSession(); $('login-password').value = ''; $('login-dialog').close(); if (!state.editor) await loadList();
     } catch (error) { message($('login-error'), error.message); } finally { $('login-submit').disabled = false; }
   });
   $('logout').addEventListener('click', async () => {
-    if (!canDiscard()) return; $('logout').disabled = true;
-    try { await api('session', { method: 'DELETE' }); clearAi(); state.editor = null; $('editor-dialog').close(); $('preview-dialog').close(); $('list-content').replaceChildren(el('div', 'empty-state', '请先登录管理工作台')); $('pagination').hidden = true; await refreshSession(); showLogin(''); }
+    if (!canDiscard()) return; state.editorSequence++; $('logout').disabled = true;
+    try { await api('session', { method: 'DELETE' }); state.editorSequence++; clearAi(); state.editor = null; $('editor-dialog').close(); $('preview-dialog').close(); $('list-content').replaceChildren(el('div', 'empty-state', '请先登录管理工作台')); $('pagination').hidden = true; await refreshSession(); showLogin(''); }
     catch (error) { message($('page-message'), error.message); } finally { $('logout').disabled = false; }
   });
   function canDiscard() { return !(state.editor?.dirty || aiHasWork()) || window.confirm('当前内容或 AI 录入草稿尚未保存，确定放弃这些修改吗？'); }
   function selectTab(tab) {
     if (!canDiscard()) return;
-    clearAi(); state.editor = null; $('editor-dialog').close(); state.tab = tab; state.page = 1; state.keyword = ''; $('keyword').value = '';
+    state.editorSequence++; clearAi(); state.editor = null; $('editor-dialog').close(); state.tab = tab; state.page = 1; state.keyword = ''; $('keyword').value = '';
     document.querySelectorAll('[data-tab]').forEach(node => { const selected = node.dataset.tab === tab; node.classList.toggle('active', selected); if (selected) node.setAttribute('aria-current', 'page'); else node.removeAttribute('aria-current'); });
     $('page-title').textContent = names[tab]; $('page-description').textContent = descriptions[tab]; $('new-item').hidden = !singular[tab]; $('new-item').textContent = '＋ 新建' + (singular[tab] || '');
     $('ai-import').hidden = $('ai-assistant').hidden = !aiCollections.includes(tab);
@@ -350,7 +357,7 @@ if (typeof document !== 'undefined') {
       if (sequence !== state.editorSequence) return;
       clearAi(); state.editor = { collection, item, dirty: false, busy: false }; renderEditor(); state.editor.dirty = false;
       if (!$('editor-dialog').open) $('editor-dialog').showModal();
-    } catch (error) { message($('page-message'), error.message); }
+    } catch (error) { if (sequence === state.editorSequence) message($('page-message'), error.message); }
   }
   async function showAiReview(result, sequence = state.ai?.sequence) {
     const assistant = state.ai;

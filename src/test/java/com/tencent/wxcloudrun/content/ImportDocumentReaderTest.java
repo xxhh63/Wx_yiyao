@@ -59,6 +59,18 @@ class ImportDocumentReaderTest {
     try(var slides=new XMLSlideShow();var bytes=new ByteArrayOutputStream()){slides.createSlide().createTextBox().setText("研发融资");slides.write(bytes);assertTrue(read("a.pptx",bytes.toByteArray()).path("text").asText().contains("研发融资"));}
     assertTrue(read("a.rtf","{\\rtf1\\ansi Project Alpha}".getBytes(StandardCharsets.US_ASCII)).path("text").asText().contains("Project Alpha"));
   }
+  @Test void xlsKeepsCellCoordinatesWhenTheAmountColumnIsEmpty() throws Exception {
+    try(var book=new org.apache.poi.hssf.usermodel.HSSFWorkbook();var bytes=new ByteArrayOutputStream()) {
+      var sheet=book.createSheet("Materials");var header=sheet.createRow(0);
+      header.createCell(0).setCellValue("ResourceName");header.createCell(1).setCellValue("AmountWan");header.createCell(2).setCellValue("EmployeeCount");
+      var row=sheet.createRow(1);row.createCell(0).setCellValue("Alpha");row.createCell(2).setCellValue(500);
+      book.write(bytes);
+      String text=read("materials.xls",bytes.toByteArray()).path("text").asText();
+      assertTrue(text.contains("A1: ResourceName\tB1: AmountWan\tC1: EmployeeCount\t"));
+      assertTrue(text.contains("A2: Alpha\tC2: 500\t"));
+      assertFalse(text.contains("B2: 500"));
+    }
+  }
   @Test void capsTextAndRejectsEmptyUnsupportedOrOversizedInput() throws Exception {
     var result=read("a.md","字".repeat(60_100).getBytes(StandardCharsets.UTF_8));assertTrue(result.path("text").asText().length()<=60_000);assertFalse(result.path("warnings").isEmpty());
     var empty=read("a.txt","   \n".getBytes(StandardCharsets.UTF_8));assertTrue(empty.path("text").asText().isBlank());assertFalse(empty.path("warnings").isEmpty());
