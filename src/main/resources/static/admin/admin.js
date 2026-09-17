@@ -43,9 +43,10 @@ function resourceFilters(catalogs, audience, category) {
     return { field, label:filter.label || field, storage:['industries','cooperationModes','kind'].includes(field) ? 'root' : 'attributes', multiple:!!filter.multiple || ['industries','cooperationModes','indications'].includes(field), options:(filter.options || []).map(option => typeof option === 'string' ? {value:option,label:option} : option).filter(option => option.value && option.value !== 'all') };
   });
 }
-function resourceSelection(catalogs, item, preferred) {
+function resourceSelection(catalogs, item, preferred, allowBlank = false) {
   const views=item.views || [];
   const first=views.find(view => view.audience === preferred) || views.find(view => resourceRoles.some(([key]) => key === view.audience)) || views[0];
+  if (allowBlank) return { audience:first?.audience || preferred || '', category:first?.category || item.resourceType || '' };
   const audience=first?.audience || (editableResourceCategories(catalogs, preferred, item).some(c => !item.resourceType || c.value === item.resourceType) ? preferred : resourceRoles.find(([key]) => editableResourceCategories(catalogs,key,item).some(c => !item.resourceType || c.value === item.resourceType))?.[0]) || 'investor';
   return { audience, category:first?.category || item.resourceType || resourceCategories(catalogs,audience)[0]?.value };
 }
@@ -56,11 +57,37 @@ function resourcePayload(catalogs, item, type, edits) {
 }
 
 function resourceViewSelection(views, audience, category, previousAudience, retainPrevious) {
+  if (!audience || !category) return [];
   const next=views.filter(view=>view.category === category && (retainPrevious || view.audience !== previousAudience || view.audience === audience)).map(view=>({...view}));
   if(!next.some(view=>view.audience === audience))next.push({audience,category,sortOrder:0});
   return next;
 }
-if (typeof module !== 'undefined' && module.exports) module.exports = { splitList, sectionParagraphs, safeImageUrl, attributeDefinitions, policyCategories, allowedViewCategories, listQuery, resourceCategories, resourceFilters, resourceSelection, resourcePayload, resourceViewSelection };
+const aiCollections = ['resources', 'policies', 'promos', 'institutions'];
+function aiDraftItem(collection, draft, previous = {}) {
+  if (!aiCollections.includes(collection) || !draft || typeof draft !== 'object' || Array.isArray(draft)) throw new Error('识别结果格式无效，请重试。');
+  const fields = {
+    resources: ['title','summary','resourceType','kind','publisherRole','issuer','region','city','amountWan','amountLabel','industries','tags','cooperationModes','status','tone','attributes','views'],
+    policies: ['title','summary','category','region','date','sourceName','sourceUrl'],
+    promos: ['title','eyebrow','description','tone','buttonText'],
+    institutions: ['name','summary','region','industries','serviceTags']
+  }[collection];
+  const item = { publicationStatus:'DRAFT', sortOrder:Number.isSafeInteger(previous.sortOrder) && previous.sortOrder >= 0 ? previous.sortOrder : 0 };
+  for (const field of [...fields, 'sourceKind', 'sourceNote', 'sections']) if (Object.hasOwn(draft, field) && draft[field] != null) item[field] = draft[field];
+  // Associations, uploaded images and home recommendations require a staff choice.
+  if (collection === 'resources' || collection === 'promos') item.imageUrl = previous.imageUrl || '';
+  if (collection === 'institutions') item.images = previous.images || [];
+  if (collection === 'policies') item.homeRecommended = previous.homeRecommended === true;
+  if (collection === 'resources' && Array.isArray(item.views)) item.views = item.views.map(view => {
+    const stored = previous.views?.find(entry => entry.audience === view.audience && entry.category === view.category);
+    return { audience:view.audience, category:view.category, sortOrder:Number.isSafeInteger(stored?.sortOrder) && stored.sortOrder >= 0 ? stored.sortOrder : 0 };
+  });
+  if (collection === 'promos') {
+    const type = ['article','resource','policy','none'].includes(draft.action?.type) ? draft.action.type : '';
+    item.action = { type, targetId:type === previous.action?.type ? previous.action.targetId || '' : '' };
+  }
+  return item;
+}
+if (typeof module !== 'undefined' && module.exports) module.exports = { splitList, sectionParagraphs, safeImageUrl, attributeDefinitions, policyCategories, allowedViewCategories, listQuery, resourceCategories, resourceFilters, resourceSelection, resourcePayload, resourceViewSelection, aiDraftItem };
 if (typeof document !== 'undefined') {
   const $ = id => document.getElementById(id);
   const names = { featured: '首页主推', promos: '广告管理', policies: '政策资讯', resources: '资源管理', institutions: '机构管理', stats: '数据概览', audit: '操作记录' };
@@ -69,7 +96,7 @@ if (typeof document !== 'undefined') {
   const audiences = [['pool', '骊珠要素'], ['investor', '投资人专区'], ['enterprise', '企业专区'], ['scientist', '科研专区'], ['manager', '服务机构专区']];
   const resourceTypes = [['project', '项目'], ['mah', 'MAH'], ['scene', '场景'], ['talent', '人才'], ['technology', '技术'], ['patent', '专利'], ['data', '数据'], ['service', '服务'], ['achievement', '历史成果'], ['cro', 'CRO服务'], ['cdmo', 'CDMO服务'], ['solution', '骊珠整体解决方案'], ['ip_service', '知识产权服务'], ['financing_service', '投融资服务']];
   const tones = [['medical', '医药青绿'], ['cyber', '科技蓝'], ['material', '材料暖金'], ['robot', '智能蓝'], ['energy', '能源绿'], ['network', '互联蓝'], ['lab', '实验室青'], ['build', '产业灰蓝'], ['car', '装备蓝'], ['bio', '生物绿'], ['mint', '薄荷绿'], ['blue', '明亮蓝'], ['aqua', '水青色'], ['navy', '深蓝']];
-  const state = { tab: 'featured', page: 1, pageSize: 20, keyword: '', total: 0, listSequence: 0, editorSequence: 0, catalogs: {}, session: null, editor: null, uploads: 0, resourceAudience: 'investor', resourceCategory: 'all' };
+  const state = { tab: 'featured', page: 1, pageSize: 20, keyword: '', total: 0, listSequence: 0, editorSequence: 0, catalogs: {}, session: null, editor: null, ai: null, uploads: 0, resourceAudience: 'investor', resourceCategory: 'all' };
   let controlId = 0;
   function el(tag, className, text) { const node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = String(text); return node; }
   function button(text, className, action) { const node = el('button', className || 'secondary-button', text); node.type = 'button'; if (action) node.addEventListener('click', action); return node; }
@@ -82,7 +109,7 @@ if (typeof document !== 'undefined') {
     if (options.body && !(options.body instanceof FormData) && !(options.body instanceof URLSearchParams)) headers.set('Content-Type', 'application/json');
     let response;
     try { response = await fetch('/admin/api/' + path, { credentials: 'same-origin', cache: 'no-store', ...options, headers }); }
-    catch { throw new Error('无法连接服务，请检查网络后重试。当前输入已保留。'); }
+    catch (error) { if (error.name === 'AbortError') throw error; throw new Error('无法连接服务，请检查网络后重试。当前输入已保留。'); }
     let result; try { result = await response.json(); } catch { throw new Error('服务返回了无法识别的响应，请稍后重试。'); }
     if (!response.ok || result.code !== 0) {
       const error = new Error(result.errorMsg || `操作失败（${response.status}），请稍后重试。`); error.status = response.status;
@@ -104,15 +131,16 @@ if (typeof document !== 'undefined') {
   });
   $('logout').addEventListener('click', async () => {
     if (!canDiscard()) return; $('logout').disabled = true;
-    try { await api('session', { method: 'DELETE' }); state.editor = null; $('editor-dialog').close(); $('preview-dialog').close(); $('list-content').replaceChildren(el('div', 'empty-state', '请先登录管理工作台')); $('pagination').hidden = true; await refreshSession(); showLogin(''); }
+    try { await api('session', { method: 'DELETE' }); clearAi(); state.editor = null; $('editor-dialog').close(); $('preview-dialog').close(); $('list-content').replaceChildren(el('div', 'empty-state', '请先登录管理工作台')); $('pagination').hidden = true; await refreshSession(); showLogin(''); }
     catch (error) { message($('page-message'), error.message); } finally { $('logout').disabled = false; }
   });
-  function canDiscard() { return !state.editor?.dirty || window.confirm('当前内容尚未保存，确定放弃这些修改吗？'); }
+  function canDiscard() { return !(state.editor?.dirty || aiHasWork()) || window.confirm('当前内容或 AI 录入草稿尚未保存，确定放弃这些修改吗？'); }
   function selectTab(tab) {
     if (!canDiscard()) return;
-    state.editor = null; $('editor-dialog').close(); state.tab = tab; state.page = 1; state.keyword = ''; $('keyword').value = '';
+    clearAi(); state.editor = null; $('editor-dialog').close(); state.tab = tab; state.page = 1; state.keyword = ''; $('keyword').value = '';
     document.querySelectorAll('[data-tab]').forEach(node => { const selected = node.dataset.tab === tab; node.classList.toggle('active', selected); if (selected) node.setAttribute('aria-current', 'page'); else node.removeAttribute('aria-current'); });
     $('page-title').textContent = names[tab]; $('page-description').textContent = descriptions[tab]; $('new-item').hidden = !singular[tab]; $('new-item').textContent = '＋ 新建' + (singular[tab] || '');
+    $('ai-import').hidden = $('ai-assistant').hidden = !aiCollections.includes(tab);
     $('search-form').hidden = tab === 'stats'; $('keyword').closest('label').hidden = tab === 'audit'; $('keyword').disabled = tab === 'audit'; $('search-form').querySelector('[type=submit]').hidden = tab === 'audit'; $('search-form').querySelector('[type=submit]').disabled = tab === 'audit';
     $('resource-navigation').hidden = tab !== 'resources';
     $('list-content').replaceChildren(el('div', 'empty-state', '正在读取内容…')); loadList();
@@ -205,7 +233,8 @@ if (typeof document !== 'undefined') {
     input.name = name; input.id = 'field-' + (++controlId); wrapper.htmlFor = input.id;
     if (options.choices) {
       if (options.multiple) input.multiple = true;
-      for (const choice of options.choices) { const pair = Array.isArray(choice) ? choice : [choice.value, choice.label || choice.value], option = el('option', '', pair[1]); option.value = pair[0]; option.selected = Array.isArray(current) ? current.includes(pair[0]) : String(current ?? '') === String(pair[0]); input.append(option); }
+      const choices = state.editor?.aiDraft && !options.multiple && !options.choices.some(choice => (Array.isArray(choice) ? choice[0] : choice.value) === '') ? [['', '请人工选择（未识别）'], ...options.choices] : options.choices;
+      for (const choice of choices) { const pair = Array.isArray(choice) ? choice : [choice.value, choice.label || choice.value], option = el('option', '', pair[1]); option.value = pair[0]; option.selected = Array.isArray(current) ? current.includes(pair[0]) : String(current ?? '') === String(pair[0]); input.append(option); }
     } else { if (options.type !== 'textarea') input.type = options.type || 'text'; input.value = Array.isArray(current) ? current.join('，') : current ?? ''; }
     if (options.type === 'textarea') input.rows = options.rows || 3;
     for (const prop of ['required', 'maxLength', 'min', 'max', 'step', 'placeholder']) if (options[prop] !== undefined) input[prop] = options[prop];
@@ -217,14 +246,125 @@ if (typeof document !== 'undefined') {
   function numberValue(name, empty = 0) { const text = value(name); return text === '' ? empty : Number(text); }
   function editorError(error) { message($('editor-error'), error.status === 409 ? '内容已被其他操作更新。你的输入已保留；请先复制需要保留的修改，再重新载入服务器版本。' : error.message); $('reload-editor').hidden = error.status !== 409; }
   async function ensureCatalogs() { await Promise.all(audiences.map(async ([audience]) => { if (!state.catalogs[audience]) state.catalogs[audience] = await api('catalogs/' + audience); })); }
+  function aiHasWork() { return !!(state.ai && (state.ai.text.trim() || state.ai.file || state.ai.result)); }
+  function cancelAiRequest(note = '') {
+    const assistant = state.ai; if (!assistant) return;
+    assistant.sequence++; assistant.controller?.abort(); assistant.controller = null; assistant.busy = false;
+    renderAiPanel(); if (note) message($('ai-error'), note, 'notice');
+  }
+  function clearAi() { cancelAiRequest(); state.ai = null; $('ai-dialog').close(); $('ai-text').value = ''; $('ai-file').value = ''; }
+  function captureAiReview(updateContext = true) {
+    if (!state.ai || !state.editor?.aiDraft || state.editor.item.id) return;
+    state.ai.previousDraft = readEditor(false);
+    if (updateContext && state.editor.collection === 'resources') state.ai.context = { audience:value('resourceAudience'), resourceType:value('resourceType') };
+  }
+  function aiFieldLabel(name) {
+    const key = String(name).replace(/^attributes\./, '');
+    const labels = { title:'标题',name:'机构名称',summary:'摘要',description:'描述',resourceType:'二级分类',audience:'一级模块',views:'展示专区',kind:'供需类型',publisherRole:'发布方身份',issuer:'发布方名称',region:'地区',city:'城市',amountWan:'金额',amountLabel:'金额文案',industries:'行业',tags:'标签',cooperationModes:'合作标签',status:'业务状态',tone:'色彩模板',sourceKind:'来源类型',sourceName:'来源名称',sourceUrl:'原文链接',category:'资讯分类',date:'展示日期',buttonText:'按钮文案',eyebrow:'广告角标',action:'点击动作','action.type':'点击动作','action.targetId':'关联内容',sections:'分节正文',serviceTags:'服务标签',imageUrl:'图片',images:'机构图片' };
+    if (labels[key]) return labels[key];
+    for (const catalog of Object.values(state.catalogs)) for (const filters of Object.values(catalog.filtersByCategory || {})) { const field=filters.find(filter=>(filter.field || filter.key) === key); if(field)return field.label; }
+    return '待补充信息';
+  }
+  function renderAiContext() {
+    const assistant=state.ai;if(!assistant || assistant.collection !== 'resources')return;
+    const fill=(select,choices,current)=>{select.replaceChildren();for(const [value,label]of [['','由材料识别，无法确认则留空'],...choices]){const option=el('option','',label);option.value=value;option.selected=value===current;select.append(option);}};
+    fill($('ai-audience'),resourceRoles,assistant.context.audience);
+    const categories=assistant.context.audience ? resourceCategories(state.catalogs,assistant.context.audience) : [...new Map(resourceRoles.flatMap(([role])=>resourceCategories(state.catalogs,role)).map(category=>[category.value,category])).values()];
+    if(!categories.some(category=>category.value===assistant.context.resourceType))assistant.context.resourceType='';
+    fill($('ai-category'),categories.map(category=>[category.value,category.label]),assistant.context.resourceType);
+  }
+  function renderAiPanel() {
+    const assistant=state.ai;if(!assistant)return;
+    const fileMode=assistant.mode==='file',status=assistant.status;
+    $('ai-title').textContent=(fileMode?'导入文件':'AI录入助手')+' · '+singular[assistant.collection];
+    $('ai-file-mode').setAttribute('aria-pressed',String(fileMode));$('ai-text-mode').setAttribute('aria-pressed',String(!fileMode));
+    $('ai-file-row').hidden=!fileMode;$('ai-context').hidden=assistant.collection!=='resources';$('ai-text').value=assistant.text;
+    $('ai-input-label').textContent=fileMode?'补充说明（选填）':'描述材料或补充要求';
+    $('ai-text').maxLength=status?.maxTextChars || 60000;
+    const formats=(status?.supportedFormats || []).map(format=>String(format).replace(/^\./,'').toLowerCase());
+    $('ai-file').accept=formats.map(format=>'.'+format).join(',');
+    $('ai-file-label').textContent=(assistant.file?'已选择：'+assistant.file.name+'。':'')+'单个文件不超过 '+Math.floor((status?.maxFileBytes || 5242880)/1024/1024)+' MB'+(formats.length?'；支持 '+formats.map(format=>format.toUpperCase()).join(' / '):'')+'。';
+    $('ai-status').textContent=!status?'正在检查服务配置…':!status.configured?'服务器尚未配置DEEPSEEK_API_KEY':assistant.busy?'正在提取材料，最长等待约 90 秒…':'服务已就绪；未识别的信息会留空。';
+    $('ai-submit').disabled=assistant.busy || !status?.configured;$('ai-submit').textContent=fileMode?'识别并打开审核表单':'生成待审核表单';
+    $('ai-cancel').hidden=!assistant.busy;$('ai-resume').hidden=!state.editor?.aiDraft || !!state.editor.item.id;
+    const history=$('ai-history');history.replaceChildren();
+    for(const entry of assistant.messages)history.append(el('p','ai-message '+(entry.role==='user'?'ai-user':''),(entry.role==='user'?'你：':'助手：')+entry.text));
+  }
+  function renderAiExamples() {
+    const templates={
+      resources:'资源标题：\n资源类型：\n供给或需求：\n发布方身份与名称：\n所在地区：\n金额（如原文明确）：\n技术 / 产品 / 服务内容：\n已知资质、阶段、合作方式：',
+      policies:'资讯标题：\n来源类型（原创 / 转载 / 官方）：\n来源名称：\n原文链接：\n原文日期：\n所属地区：\n政策原文或要点：',
+      promos:'广告标题：\n广告角标：\n描述：\n按钮文案：\n点击动作（专题 / 资源 / 资讯 / 不跳转）：\n专题正文：',
+      institutions:'机构名称：\n所在地区：\n行业：\n机构简介：\n服务内容与资质：\n需要补充的正文：'
+    };
+    const host=$('ai-examples');host.replaceChildren();
+    const insert=text=>{cancelAiRequest();const assistant=state.ai;assistant.text=[$('ai-text').value.trim(),text].filter(Boolean).join('\n\n');$('ai-text').value=assistant.text;$('ai-text').focus();};
+    host.append(button('填入结构化模板','text-button',()=>insert(templates[state.ai.collection])),button('填入提问示例','text-button',()=>insert('请从以下真实材料提取表单字段，保留原意；金额、日期、来源和分类没有依据就留空。\n材料：［请在这里粘贴真实材料］')),el('span','field-hint','只填写已知信息；模板和示例不会自动发送。'));
+  }
+  async function openAi(mode) {
+    if(!aiCollections.includes(state.tab))return;
+    if(state.editor && !state.editor.aiDraft && !canDiscard())return;
+    if(state.editor?.aiDraft && !state.editor.item.id){if($('editor-dialog').open)captureAiReview();}else state.editor=null;
+    state.editorSequence++;
+    $('editor-dialog').close();
+    if(!state.ai)state.ai={collection:state.tab,mode,text:'',file:null,context:{audience:'',resourceType:''},previousDraft:{},messages:[],result:null,status:null,busy:false,sequence:0};
+    const assistant=state.ai;cancelAiRequest();assistant.mode=mode;message($('ai-error'),'');renderAiPanel();renderAiExamples();renderAiContext();
+    if(!$('ai-dialog').open)$('ai-dialog').showModal();
+    try {
+      const [status]=await Promise.all([assistant.status?Promise.resolve(assistant.status):api('ai/status'),assistant.collection==='resources'?ensureCatalogs():Promise.resolve()]);
+      if(state.ai!==assistant)return;assistant.status=status;renderAiContext();renderAiPanel();
+    } catch(error){if(state.ai===assistant){message($('ai-error'),error.message);$('ai-status').textContent='服务状态读取失败。输入已保留，可关闭后重新打开重试。';}}
+  }
+  async function submitAi(event) {
+    event.preventDefault();const assistant=state.ai;if(!assistant || assistant.busy)return;
+    assistant.text=$('ai-text').value;const text=assistant.text.trim(),file=assistant.mode==='file'?assistant.file:null;
+    try {
+      if(state.uploads)throw new Error('图片仍在上传，请等待上传完成后再补充识别。');
+      if(!assistant.status?.configured)throw new Error('服务器尚未配置DEEPSEEK_API_KEY');
+      if(assistant.mode==='file'&&!file)throw new Error('请先选择一个材料文件。');
+      if(assistant.mode==='text'&&!text)throw new Error('请填写真实材料或需要补充的信息。');
+      if(text.length>assistant.status.maxTextChars)throw new Error('输入文字超过限制，请缩短后重试。');
+      if(file){const extension=file.name.split('.').pop().toLowerCase();if(file.size>assistant.status.maxFileBytes)throw new Error('文件超过大小限制，请选择 5 MB 以内的文件。');if(!assistant.status.supportedFormats.some(format=>String(format).replace(/^\./,'').toLowerCase()===extension))throw new Error('暂不支持此文件格式，请按页面提示选择。');}
+      if(state.editor?.aiDraft && state.editor.dirty && !window.confirm('新的识别结果将替换当前未保存表单。当前已填写的信息会一并提交，确定继续吗？'))return;
+      captureAiReview(false);
+    } catch(error){message($('ai-error'),error.message);return;}
+    const request={collection:assistant.collection,text,context:{...assistant.context},previousDraft:assistant.previousDraft};
+    const body=file?new FormData():JSON.stringify(request);if(file){body.append('file',file);body.append('request',JSON.stringify(request));}
+    const sequence=++assistant.sequence;assistant.controller=new AbortController();assistant.busy=true;
+    assistant.messages.push({role:'user',text:(file?'文件：'+file.name+(text?'；':''):'')+text.slice(0,180)});assistant.messages=assistant.messages.slice(-6);
+    message($('ai-error'),'');renderAiPanel();
+    const timer=setTimeout(()=>{if(state.ai===assistant && assistant.sequence===sequence)cancelAiRequest('识别等待超时，材料和输入已保留。请稍后手动重试。');},90000);
+    try {
+      const result=await api('ai/draft',{method:'POST',body,signal:assistant.controller.signal});
+      if(state.ai!==assistant || assistant.sequence!==sequence)return;
+      if(await showAiReview(result,sequence)){
+        assistant.messages.push({role:'assistant',text:String(result.message || '已生成待审核表单，请核对后手动保存。').slice(0,220)});assistant.messages=assistant.messages.slice(-6);assistant.text='';
+      }
+    } catch(error){if(state.ai===assistant && assistant.sequence===sequence)message($('ai-error'),error.name==='AbortError'?'识别已取消，输入已保留。':error.message);}
+    finally{clearTimeout(timer);if(state.ai===assistant && assistant.sequence===sequence){assistant.busy=false;assistant.controller=null;renderAiPanel();}}
+  }
   async function openEditor(collection, id) {
     if (!canDiscard()) return; const sequence = ++state.editorSequence; message($('page-message'), '');
     try {
       const [item] = await Promise.all([id ? api(`${collection}/${encodeURIComponent(id)}`) : Promise.resolve({ publicationStatus: 'DRAFT', sortOrder: 0, ...(collection === 'resources' && state.tab === 'resources' && state.resourceAudience && state.resourceCategory !== 'all' ? {resourceType:state.resourceCategory} : {}) }), collection === 'resources' ? ensureCatalogs() : Promise.resolve()]);
       if (sequence !== state.editorSequence) return;
-      state.editor = { collection, item, dirty: false, busy: false }; renderEditor(); state.editor.dirty = false;
+      clearAi(); state.editor = { collection, item, dirty: false, busy: false }; renderEditor(); state.editor.dirty = false;
       if (!$('editor-dialog').open) $('editor-dialog').showModal();
     } catch (error) { message($('page-message'), error.message); }
+  }
+  async function showAiReview(result, sequence = state.ai?.sequence) {
+    const assistant = state.ai;
+    if (!assistant || result.collection !== assistant.collection) throw new Error('识别结果与当前内容类型不一致，请重试。');
+    if (result.collection === 'resources') await ensureCatalogs();
+    if (state.ai !== assistant || assistant.sequence !== sequence) return false;
+    const item = aiDraftItem(result.collection, result.draft, assistant.previousDraft);
+    state.editorSequence++;
+    state.editor = { collection:result.collection, item, aiDraft:true, aiResult:result, dirty:true, busy:false };
+    assistant.result = result; assistant.previousDraft = item;
+    renderEditor(); state.editor.dirty = true;
+    $('ai-dialog').close();
+    if (!$('editor-dialog').open) $('editor-dialog').showModal();
+    return true;
   }
   function renderEditor() {
     const { collection, item } = state.editor;
@@ -232,7 +372,7 @@ if (typeof document !== 'undefined') {
     message($('publication-notice'), item.publicationStatus === 'PUBLISHED' ? '这条内容已发布。保存修改将立即更新线上内容；如需暂停展示，请先在列表中下架。' : '', 'notice');
     $('editor-status').textContent = item.id ? `${{ DRAFT: '草稿', PUBLISHED: '已发布', OFFLINE: '已下架' }[item.publicationStatus] || '草稿'} · 版本 ${item.version ?? 0}` : '新内容保存为草稿';
     const host = $('editor-fields');
-    if (item.sourceNote) host.append(el('p', 'message notice', '来源说明：' + item.sourceNote));
+    if (item.sourceNote && !state.editor.aiDraft) host.append(el('p', 'message notice', '来源说明：' + item.sourceNote));
     if (collection === 'featured') {
       const grid = group(host, '关联资源'), picker = relatedPicker(grid, '推荐资源', 'resourceId', 'resources', item.resourceId); picker.classList.add('full');
       host.append(button('编辑所选资源的标题、金额与正文', 'text-button', () => { const id = value('resourceId'); if (id) openEditor('resources', id); else editorError(new Error('请先选择一条资源。')); }), el('p', 'field-hint', '主推引用资源内容。关联资源须已发布且处于开放状态，发布主推后才会展示。'));
@@ -240,35 +380,44 @@ if (typeof document !== 'undefined') {
     else if (collection === 'promos') renderPromo(host, item);
     else if (collection === 'policies') renderPolicy(host, item);
     else renderInstitution(host, item);
+    if (state.editor.aiDraft) {
+      const source = group(host, '资料来源');
+      if (collection !== 'policies') field(source, '来源类型', 'sourceKind', item.sourceKind, { choices:[['original','原创资料'],['reprint','转载资料'],['official','官方来源'],['legacy_sample','迁入示例资料']], required:true });
+      field(source, '来源备注', 'sourceNote', item.sourceNote, {type:'textarea',maxLength:1000,full:true});
+    }
     const order = group(host, '展示设置'); field(order, '排序值', 'sortOrder', item.sortOrder ?? 0, { type: 'number', min: 0, step: 1, required: true, hint: '数值越小越靠前；相同数值按固定顺序排列。' });
     if (collection !== 'featured') renderSections(host, item.sections || []);
+    $('return-ai').hidden = !state.editor.aiDraft || !!item.id;
+    const review = state.editor.aiResult;
+    const missing=[...new Set((review?.missingFields || []).map(aiFieldLabel))];
+    message($('ai-review-notice'), state.editor.aiDraft ? ['待人工复核：识别结果尚未保存。请核对所有字段；空白表示材料未能确认，需要时请人工补齐。',missing.length?'尚未确认：'+missing.join('、')+'。':'', ...(review?.warnings || [])].filter(Boolean).join('\n') : '', 'notice');
   }
   function renderResource(host, item) {
     const classification = el('div'); host.append(classification);
     const grid = group(host, '资源信息');
     field(grid, '资源标题', 'title', item.title, { required: true, maxLength: 120, full: true }); field(grid, '摘要', 'summary', item.summary, { type: 'textarea', maxLength: 500, full: true });
-    field(grid, '供需类型', 'kind', item.kind || 'supply', { choices: [['supply', '供给'], ['demand', '需求']] });
-    field(grid, '发布方身份', 'publisherRole', item.publisherRole || 'platform', { choices: [['platform', '平台'], ['enterprise', '企业'], ['investor', '投资人']] }); field(grid, '发布方名称', 'issuer', item.issuer, { maxLength: 120 });
+    field(grid, '供需类型', 'kind', item.kind || (state.editor.aiDraft ? '' : 'supply'), { choices: [['supply', '供给'], ['demand', '需求']], required:true });
+    field(grid, '发布方身份', 'publisherRole', item.publisherRole || (state.editor.aiDraft ? '' : 'platform'), { choices: [['platform', '平台'], ['enterprise', '企业'], ['investor', '投资人']], required:true }); field(grid, '发布方名称', 'issuer', item.issuer, { maxLength: 120 });
     field(grid, '地区', 'region', item.region, { maxLength: 50 }); field(grid, '城市', 'city', item.city, { maxLength: 50 });
     field(grid, '金额（万元）', 'amountWan', item.amountWan, { type: 'number', min: 0, step: '0.01', hint: '留空表示面议。' }); field(grid, '金额展示文案', 'amountLabel', item.amountLabel, { maxLength: 30, hint: '例如“合作面议”；不填写则使用金额。' });
     field(grid, '行业', 'industries', item.industries, { hint: '多个值用逗号分隔，每项最多 30 字，最多 12 项。' }); field(grid, '标签', 'tags', item.tags, { hint: '多个值用逗号分隔，每项最多 30 字，最多 12 项。' });
-    field(grid, '合作标签', 'cooperationModes', item.cooperationModes, { hint: '多个值用逗号分隔；分类筛选请填写上方对应选项。' }); field(grid, '业务状态', 'status', item.status || 'open', { choices: [['open', '开放'], ['closed', '已结束'], ['withdrawn', '已撤回']] });
+    field(grid, '合作标签', 'cooperationModes', item.cooperationModes, { hint: '多个值用逗号分隔；分类筛选请填写上方对应选项。' }); field(grid, '业务状态', 'status', item.status || (state.editor.aiDraft ? '' : 'open'), { choices: [['open', '开放'], ['closed', '已结束'], ['withdrawn', '已撤回']], required:true });
     renderImageField(grid, '封面图片', 'imageUrl', item.imageUrl); renderTone(grid, item.tone); renderViews(classification, item);
   }
-  function renderTone(parent, current) { const choices = [...tones]; if (current && !choices.some(([value]) => value === current)) choices.push([current, '保留当前色彩']); field(parent, '色彩模板', 'tone', current || 'medical', { choices }); }
+  function renderTone(parent, current) { const choices = [...tones]; if (current && !choices.some(([value]) => value === current)) choices.push([current, '保留当前色彩']); field(parent, '色彩模板', 'tone', current || (state.editor.aiDraft ? '' : 'medical'), { choices, required:true }); }
   function renderPromo(host, item) {
     const grid = group(host, '广告信息');
-    field(grid, '标题', 'title', item.title, { required: true, maxLength: 120, full: true }); field(grid, '广告角标', 'eyebrow', item.eyebrow, { maxLength: 20 }); field(grid, '按钮文案', 'buttonText', item.buttonText || '查看详情', { required: true, maxLength: 20 });
+    field(grid, '标题', 'title', item.title, { required: true, maxLength: 120, full: true }); field(grid, '广告角标', 'eyebrow', item.eyebrow, { maxLength: 20 }); field(grid, '按钮文案', 'buttonText', item.buttonText || (state.editor.aiDraft ? '' : '查看详情'), { required: true, maxLength: 20 });
     field(grid, '副标题 / 描述', 'description', item.description, { type: 'textarea', maxLength: 500, full: true }); renderImageField(grid, '广告图片', 'imageUrl', item.imageUrl); renderTone(grid, item.tone);
-    const action = group(host, '点击动作'), type = field(action, '点击后打开', 'actionType', item.action?.type || 'article', { choices: [['article', '当前广告专题'], ['resource', '已存在的资源'], ['policy', '已存在的政策资讯'], ['none', '不跳转']] }), target = el('div', 'full'); action.append(target);
+    const action = group(host, '点击动作'), type = field(action, '点击后打开', 'actionType', item.action?.type || (state.editor.aiDraft ? '' : 'article'), { choices: [['article', '当前广告专题'], ['resource', '已存在的资源'], ['policy', '已存在的政策资讯'], ['none', '不跳转']], required:true }), target = el('div', 'full'); action.append(target);
     const updateTarget = () => { target.replaceChildren(); if (['resource', 'policy'].includes(type.value)) relatedPicker(target, '选择跳转内容', 'targetId', type.value === 'resource' ? 'resources' : 'policies', type.value === item.action?.type ? item.action.targetId : ''); };
     type.addEventListener('change', updateTarget); updateTarget();
   }
   function renderPolicy(host, item) {
     const grid = group(host, '资讯内容');
     field(grid, '标题', 'title', item.title, { required: true, maxLength: 120, full: true }); field(grid, '摘要', 'summary', item.summary, { type: 'textarea', maxLength: 500, full: true });
-    field(grid, '分类', 'category', item.category || policyCategories[0], { required: true, choices: policyCategories.map(category => [category, category]) }); field(grid, '地区', 'region', item.region, { maxLength: 50 }); field(grid, '展示日期', 'date', item.date?.slice(0, 10), { type: 'date', required: true });
-    const sourceKind = field(grid, '来源类型', 'sourceKind', item.sourceKind || 'original', { choices: [['original', '原创文章'], ['reprint', '转载文章'], ['official', '官方来源'], ['legacy_sample', '迁入示例资料']] }); field(grid, '来源名称', 'sourceName', item.sourceName, { maxLength: 120, required: true });
+    field(grid, '分类', 'category', item.category || (state.editor.aiDraft ? '' : policyCategories[0]), { required: true, choices: policyCategories.map(category => [category, category]) }); field(grid, '地区', 'region', item.region, { maxLength: 50 }); field(grid, '展示日期', 'date', item.date?.slice(0, 10), { type: 'date', required: true });
+    const sourceKind = field(grid, '来源类型', 'sourceKind', item.sourceKind || (state.editor.aiDraft ? '' : 'original'), { choices: [['original', '原创文章'], ['reprint', '转载文章'], ['official', '官方来源'], ['legacy_sample', '迁入示例资料']], required:true }); field(grid, '来源名称', 'sourceName', item.sourceName, { maxLength: 120, required: true });
     const sourceUrl = field(grid, '原文链接（HTTPS）', 'sourceUrl', item.sourceUrl, { type: 'url', maxLength: 2048, hint: '官方来源及转载文章请填写可核对的原文链接。' }); check(host, '推荐到首页政策资讯', 'homeRecommended', item.homeRecommended);
     const updateSourceRequired = () => { sourceUrl.required = ['official', 'reprint'].includes(sourceKind.value); };
     sourceKind.addEventListener('change', updateSourceRequired); updateSourceRequired();
@@ -329,11 +478,12 @@ if (typeof document !== 'undefined') {
   }
 
   function renderViews(host, item) {
-    const selected=resourceSelection(state.catalogs,item,state.resourceAudience), grid=group(host,'资源分类');
+    const context=state.editor.aiDraft ? state.ai?.context || {} : {};
+    const selected=resourceSelection(state.catalogs,{...item,resourceType:item.resourceType || context.resourceType},state.editor.aiDraft ? context.audience : state.resourceAudience,!!state.editor.aiDraft), grid=group(host,'资源分类');
     const roleChoices=[...resourceRoles];if(item.views?.some(view=>view.audience === 'pool'))roleChoices.push(['pool','项目池（已有展示）']);
     const audience=field(grid,'一级模块','resourceAudience',selected.audience,{choices:roleChoices,required:true});
     // Existing achievements retain their exact type; new service records cannot select the retired category.
-    const editorCategories=role=>editableResourceCategories(state.catalogs,role,item);
+    const editorCategories=role=>!role && state.editor.aiDraft ? [...new Map(resourceRoles.flatMap(([key])=>resourceCategories(state.catalogs,key)).map(category=>[category.value,category])).values()] : editableResourceCategories(state.catalogs,role,item);
     const category=field(grid,'二级分类','resourceType',selected.category,{choices:editorCategories(audience.value).map(c=>[c.value,c.label]),required:true});
     if(item.resourceType === 'achievement' && item.id)grid.append(el('p','field-hint full','这是原技术经理人的历史成果，保留原资料，可在全部资源中维护，不进入新的服务机构专栏。'));
     const note=el('p','field-hint full','交易意向沿用资源的供需类型（产出=供给、诉求=需求）；其余三级分类选填。不填写也可发布并出现在本专栏，具体筛选仅匹配已填写的属性。');grid.append(note);
@@ -357,16 +507,17 @@ if (typeof document !== 'undefined') {
     }
     function renderAttributes() {
       attrs.replaceChildren();
-      for(const name of ['industries','cooperationModes','kind'])$('editor-form').elements.namedItem(name).closest('label').hidden=false;
+      for(const name of ['industries','cooperationModes','kind']){const input=$('editor-form').elements.namedItem(name);input.closest('label').hidden=false;input.required=name==='kind';}
       const controls=group(attrs,'三级分类（选填）');
       for(const definition of resourceFilters(state.catalogs,audience.value,category.value)) {
         const rootInput=definition.storage === 'root' ? $('editor-form').elements.namedItem(definition.field) : null;
         const stored=rootInput ? (definition.multiple?splitList(rootInput.value):rootInput.value) : retained[definition.field] ?? (definition.multiple?[]:'');
-        if(rootInput)rootInput.closest('label').hidden=true;
+        if(rootInput){rootInput.closest('label').hidden=true;rootInput.required=false;}
         const choices=definition.multiple || definition.field === 'kind' ? [...definition.options] : [{value:'',label:'暂不选择'},...definition.options];
         for(const v of Array.isArray(stored)?stored:[stored])if((audience.value === 'pool'||(state.catalogs[audience.value]?.legacyCategories || []).some(c=>c.value === category.value))&&v&&!choices.some(option=>option.value === v))choices.push({value:v,label:v+'（保留已有值）'});
-        const input=field(controls,definition.label,'filter-'+definition.field,stored,{choices,multiple:definition.multiple,hint:definition.multiple?'可多选，按住 Ctrl / Command 选择；点击下方按钮可清空。':undefined});
+        const input=field(controls,definition.label,'filter-'+definition.field,stored,{choices,multiple:definition.multiple,required:definition.field==='kind',hint:definition.multiple?'可多选，按住 Ctrl / Command 选择；点击下方按钮可清空。':undefined});
         input.dataset.resourceField=definition.field;input.dataset.storage=definition.storage;
+        if(rootInput)input.addEventListener('change',()=>{rootInput.value=input.multiple?[...input.selectedOptions].map(option=>option.value).join('，'):input.value;});
         if(definition.multiple)input.parentElement.append(button('清空选择','text-button',()=>{for(const option of input.options)option.selected=false;state.editor.dirty=true;}));
       }
       if(!controls.children.length)controls.append(el('p','field-hint','当前分类没有额外筛选项。'));
@@ -383,6 +534,7 @@ if (typeof document !== 'undefined') {
       capture();
       if(roleChanged) {
         const options=editorCategories(audience.value);category.replaceChildren();
+        if(state.editor.aiDraft){const blank=el('option','','请人工选择（未识别）');blank.value='';category.append(blank);}
         for(const c of options){const option=el('option','',c.label);option.value=c.value;category.append(option);}
         if(options.some(c=>c.value === previousType))category.value=previousType;
       }
@@ -391,7 +543,7 @@ if (typeof document !== 'undefined') {
       const known=cached?.views || [];
       const selectedViews=resourceViewSelection(known,audience.value,category.value,typeChanged ? cached?.primaryAudience : previousAudience,typeChanged ? !!cached?.retainPrimary : primaryFromAssociation);
       primaryFromAssociation=cached?.primaryAudience === audience.value ? cached.retainPrimary : known.some(view=>view.audience === audience.value);
-      primaryOrder.value=selectedViews.find(view=>view.audience === audience.value).sortOrder;
+      primaryOrder.value=selectedViews.find(view=>view.audience === audience.value)?.sortOrder ?? 0;
       extras=selectedViews.filter(view=>view.audience !== audience.value && allowedViewCategories(state.catalogs,view.audience,category.value).length);
       previousType=category.value;previousAudience=audience.value;renderAttributes();renderExtras();state.editor.dirty=true;
     }
@@ -399,12 +551,13 @@ if (typeof document !== 'undefined') {
     featuredOnly.addEventListener('change',()=>{extraRows.hidden=featuredOnly.checked;primaryOrder.disabled=featuredOnly.checked;});
     state.editor.readResourceClassification=()=>{
       capture();
-      return {attributes:resourcePayload(state.catalogs,item,category.value,retained),views:featuredOnly.checked?[]:[{audience:audience.value,category:category.value,sortOrder:Number(primaryOrder.value)},...extras]};
+      return {attributes:resourcePayload(state.catalogs,item,category.value,retained),views:featuredOnly.checked || !audience.value || !category.value?[]:[{audience:audience.value,category:category.value,sortOrder:Number(primaryOrder.value)},...extras]};
     };
     renderAttributes();renderExtras();
   }
   function readEditor(validate = true) {
     const { collection, item } = state.editor, result = { sortOrder: numberValue('sortOrder') }; if (item.id) result.version = item.version;
+    if (state.editor.aiDraft) { result.sourceKind = value('sourceKind'); result.sourceNote = value('sourceNote'); }
     if (collection === 'featured') result.resourceId = value('resourceId');
     else {
       result.sections = [...($('section-rows')?.children || [])].map(row => ({ heading: row.querySelector('[name=sectionHeading]').value.trim(), paragraphs: sectionParagraphs(row.querySelector('[name=sectionParagraphs]').value) })).filter(section => section.heading || section.paragraphs.length);
@@ -421,6 +574,11 @@ if (typeof document !== 'undefined') {
       else if (collection === 'policies') { result.homeRecommended = $('editor-form').elements.namedItem('homeRecommended').checked; if (validate && result.sourceUrl && !/^https:\/\//i.test(result.sourceUrl)) throw new Error('来源链接必须使用 HTTPS。'); }
       else result.images = [...$('editor-form').querySelectorAll('[name=institutionImage]')].map(input => input.value.trim()).filter(Boolean);
       if (validate && [result.imageUrl, ...(result.images || [])].some(url => url && !safeImageUrl(url))) throw new Error('图片地址必须是有效 HTTPS 地址或已有机构图片路径。');
+      if (validate && state.editor.aiDraft) {
+        const required = collection==='resources'?['sourceKind','resourceType','kind','publisherRole','status','tone']:collection==='promos'?['sourceKind','tone','buttonText']:collection==='policies'?['sourceKind','category','date','sourceName']:['sourceKind'];
+        const missing=required.filter(field=>!result[field]);if(collection==='promos'&&!result.action.type)missing.push('action');
+        if(missing.length)throw new Error('请人工确认并填写：'+missing.map(aiFieldLabel).join('、')+'。');
+      }
     }
     return result;
   }
@@ -431,17 +589,29 @@ if (typeof document !== 'undefined') {
       if (state.uploads) throw new Error('图片仍在上传，请等待上传完成后保存。'); const data = readEditor();
       editor.busy = true; $('editor-fields').disabled = true; $('save-editor').disabled = true; message($('editor-error'), '');
       const saved = await api(editor.collection + (editor.item.id ? '/' + encodeURIComponent(editor.item.id) : ''), { method: editor.item.id ? 'PUT' : 'POST', body: JSON.stringify(data) });
-      if (state.editor !== editor) return; editor.item = saved; renderEditor(); editor.dirty = false;
+      if (state.editor !== editor) return; editor.item = saved; editor.aiDraft = false; editor.aiResult = null; clearAi(); renderEditor(); editor.dirty = false;
       message($('editor-error'), saved.publicationStatus === 'PUBLISHED' ? '保存成功，已更新线上内容。' : '保存成功，可返回列表发布。', 'success'); loadList();
     } catch (error) { editorError(error); } finally { editor.busy = false; $('editor-fields').disabled = false; $('save-editor').disabled = false; }
   });
-  function closeEditor() { if (state.editor?.busy) return; if (canDiscard()) { state.editor = null; state.editorSequence++; $('editor-dialog').close(); } }
+  function closeEditor() { if (state.editor?.busy) return; if(state.editor?.aiDraft && !state.editor.item.id){captureAiReview();$('editor-dialog').close();message($('page-message'),'AI 草稿已在本页保留，可通过“AI录入助手”继续审核或补充信息。','notice');return;} if (canDiscard()) { state.editor = null; state.editorSequence++; $('editor-dialog').close(); } }
   $('close-editor').addEventListener('click', closeEditor); $('editor-dialog').addEventListener('cancel', event => { event.preventDefault(); closeEditor(); });
   $('reload-editor').addEventListener('click', () => { const editor = state.editor; if (editor?.item.id) openEditor(editor.collection, editor.item.id); });
-  window.addEventListener('beforeunload', event => { if (state.editor?.dirty) { event.preventDefault(); event.returnValue = ''; } });
+  window.addEventListener('beforeunload', event => { if (state.editor?.dirty || aiHasWork()) { event.preventDefault(); event.returnValue = ''; } });
   async function previewSaved(collection, id) { try { const item = await api(`${collection}/${encodeURIComponent(id)}`); await showPreview(collection, item); } catch (error) { message($('page-message'), error.message); } }
   $('preview-editor').addEventListener('click', async () => { try { await showPreview(state.editor.collection, { ...state.editor.item, ...readEditor(false) }); } catch (error) { editorError(error); } });
   $('close-preview').addEventListener('click', () => $('preview-dialog').close());
+  $('ai-import').addEventListener('click',()=>openAi('file'));$('ai-assistant').addEventListener('click',()=>openAi('text'));
+  $('ai-file-mode').addEventListener('click',()=>openAi('file'));$('ai-text-mode').addEventListener('click',()=>openAi('text'));
+  $('ai-form').addEventListener('submit',submitAi);
+  $('ai-text').addEventListener('input',()=>{if(!state.ai)return;state.ai.text=$('ai-text').value;cancelAiRequest();message($('ai-error'),'');});
+  $('ai-file').addEventListener('change',()=>{if(!state.ai)return;state.ai.file=$('ai-file').files[0] || null;cancelAiRequest();message($('ai-error'),'');});
+  $('ai-audience').addEventListener('change',()=>{if(!state.ai)return;state.ai.context.audience=$('ai-audience').value;cancelAiRequest();renderAiContext();});
+  $('ai-category').addEventListener('change',()=>{if(!state.ai)return;state.ai.context.resourceType=$('ai-category').value;cancelAiRequest();});
+  $('ai-cancel').addEventListener('click',()=>cancelAiRequest('识别已取消，材料和输入已保留。'));
+  function closeAi(){if(state.ai)state.ai.text=$('ai-text').value;cancelAiRequest();$('ai-dialog').close();}
+  $('close-ai').addEventListener('click',closeAi);$('ai-dialog').addEventListener('cancel',event=>{event.preventDefault();closeAi();});
+  $('return-ai').addEventListener('click',()=>openAi('text'));
+  $('ai-resume').addEventListener('click',()=>{if(state.editor?.aiDraft && !state.editor.item.id){cancelAiRequest();$('ai-dialog').close();$('editor-dialog').showModal();}});
   async function showPreview(collection, item) {
     if (collection === 'featured') { if (!item.resourceId) throw new Error('请先选择主推资源。'); item = await api('resources/' + encodeURIComponent(item.resourceId)); }
     const host = $('preview-content'); host.replaceChildren(); host.append(el('p', 'field-hint', '内容预览 · 正式页面会使用对应的小程序排版。'));

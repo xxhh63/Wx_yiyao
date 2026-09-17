@@ -240,3 +240,7 @@ if (result.statusCode !== 200 || result.data.code !== 0) {
 - [MyBatis 兼容矩阵](https://mybatis.org/spring-boot-starter/mybatis-spring-boot-autoconfigure/)
 
 执行结果见 [第一轮验证记录](docs/round1-verification.md)。
+
+## 后台 AI 录入助手
+
+资源、政策、广告、服务机构支持文件导入和文字生成待复核表单。API Key仅配置在服务端，保存与发布由工作人员完成。见 [配置与使用说明](docs/admin-ai-import.md)。

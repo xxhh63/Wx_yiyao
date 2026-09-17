@@ -33,12 +33,12 @@ public class ApiExceptionHandler {
 
   @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
   public ResponseEntity<ApiResponse> uploadTooLarge() {
-    return ResponseEntity.status(413).body(ApiResponse.error(413, "图片不能超过 5MB"));
+    return ResponseEntity.status(413).body(ApiResponse.error(413, "文件不能超过 5MB"));
   }
 
   @ExceptionHandler(org.springframework.web.multipart.support.MissingServletRequestPartException.class)
   public ResponseEntity<ApiResponse> missingFile() {
-    return ResponseEntity.badRequest().body(ApiResponse.error(400, "请选择要上传的图片"));
+    return ResponseEntity.badRequest().body(ApiResponse.error(400, "请选择要上传的文件"));
   }
 
   @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)

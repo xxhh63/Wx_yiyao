@@ -40,6 +40,9 @@ app:
   admin:
     username: ${ADMIN_USERNAME:}
     password-hash: ${ADMIN_PASSWORD_HASH:}
+  ai:
+    # Fill only in server environment or private admin.properties; never in Git/browser.
+    api-key: ${DEEPSEEK_API_KEY:}
   wechat:
     appid: ${WECHAT_APPID:}
     auth-mode: ${WECHAT_AUTH_MODE:cloud}

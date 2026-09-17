@@ -28,7 +28,7 @@
     <div class="workspace">
       <header class="topbar"><span>骊珠科创 <span class="muted">/ 管理工作台</span></span><div class="account"><span id="username">待登录</span><button id="logout" class="text-button" type="button" hidden>退出登录</button></div></header>
       <main id="main" tabindex="-1">
-        <div class="page-heading"><div><p class="eyebrow">CONTENT WORKSPACE</p><h1 id="page-title">首页主推</h1><p class="page-description" id="page-description">选择优质资源，管理首页推荐内容与展示顺序。</p></div><button id="new-item" class="primary-button" type="button">＋ 新建主推</button></div>
+        <div class="page-heading"><div><p class="eyebrow">CONTENT WORKSPACE</p><h1 id="page-title">首页主推</h1><p class="page-description" id="page-description">选择优质资源，管理首页推荐内容与展示顺序。</p></div><div class="page-actions"><button id="ai-import" class="secondary-button" type="button" hidden>导入文件</button><button id="ai-assistant" class="secondary-button" type="button" hidden>AI录入助手</button><button id="new-item" class="primary-button" type="button">＋ 新建主推</button></div></div>
         <div id="page-message" class="message" role="status" aria-live="polite" hidden></div>
         <section class="content-card" aria-label="内容列表">
           <div id="resource-navigation" class="resource-navigation" hidden></div>
@@ -51,11 +51,28 @@
     </form>
     <p class="login-note">账号由平台管理员配置，不提供公开注册。</p>
   </dialog>
+  <dialog id="ai-dialog" class="ai-dialog" aria-labelledby="ai-title">
+    <form id="ai-form">
+      <header class="dialog-header"><div><p class="eyebrow">CONTENT ASSISTANT</p><h2 id="ai-title">AI录入助手</h2></div><button id="close-ai" class="secondary-button" type="button">关闭并保留</button></header>
+      <div class="editor-body">
+        <p class="message notice">材料将发送至DeepSeek用于提取，识别结果需人工复核</p>
+        <div class="ai-modes" role="group" aria-label="录入方式"><button id="ai-file-mode" class="secondary-button" type="button" aria-pressed="false">导入文件</button><button id="ai-text-mode" class="secondary-button" type="button" aria-pressed="true">文字 / 聊天录入</button></div>
+        <p id="ai-status" class="field-hint" role="status" aria-live="polite">正在检查服务配置…</p>
+        <div id="ai-context" class="form-grid" hidden><label class="field">资源一级模块（选填）<select id="ai-audience"><option value="">由材料识别，无法确认则留空</option></select></label><label class="field">资源二级分类（选填）<select id="ai-category"><option value="">由材料识别，无法确认则留空</option></select></label></div>
+        <label id="ai-file-row" class="field" hidden>选择材料文件<input id="ai-file" type="file"><small id="ai-file-label">单个文件不超过 5 MB。</small></label>
+        <div id="ai-examples" class="ai-examples" aria-label="录入模板与示例"></div>
+        <label class="field"><span id="ai-input-label">描述材料或补充要求</span><textarea id="ai-text" rows="7" maxlength="60000" placeholder="粘贴真实材料，或按模板填写已知信息。未提供的信息将留空。"></textarea></label>
+        <div id="ai-history" class="ai-history" role="log" aria-label="最近的录入记录" aria-live="polite"></div>
+        <p id="ai-error" class="message error" role="alert" hidden></p>
+      </div>
+      <footer class="dialog-footer"><span class="muted">识别后自动打开表单，保存和发布由你操作。</span><div><button id="ai-resume" class="secondary-button" type="button" hidden>继续审核草稿</button><button id="ai-cancel" class="secondary-button" type="button" hidden>取消识别</button><button id="ai-submit" class="primary-button" type="submit" disabled>生成待审核表单</button></div></footer>
+    </form>
+  </dialog>
   <dialog id="editor-dialog" class="editor-dialog" aria-labelledby="editor-title">
     <form id="editor-form">
       <header class="dialog-header"><div><p class="eyebrow">CONTENT EDITOR</p><h2 id="editor-title">编辑内容</h2></div><button id="close-editor" type="button" class="secondary-button">关闭</button></header>
-      <div class="editor-body"><div id="publication-notice" class="message notice" hidden></div><fieldset id="editor-fields" aria-label="内容编辑字段"></fieldset><div id="editor-error" class="message error" role="alert" hidden></div><button id="reload-editor" class="secondary-button" type="button" hidden>重新载入服务器版本</button></div>
-      <footer class="dialog-footer"><span id="editor-status" class="muted">新内容保存为草稿</span><div><button id="preview-editor" class="secondary-button" type="button">预览当前内容</button><button id="save-editor" class="primary-button" type="submit">保存内容</button></div></footer>
+      <div class="editor-body"><div id="publication-notice" class="message notice" hidden></div><div id="ai-review-notice" class="message notice" role="status" hidden></div><fieldset id="editor-fields" aria-label="内容编辑字段"></fieldset><div id="editor-error" class="message error" role="alert" hidden></div><button id="reload-editor" class="secondary-button" type="button" hidden>重新载入服务器版本</button></div>
+      <footer class="dialog-footer"><span id="editor-status" class="muted">新内容保存为草稿</span><div><button id="return-ai" class="secondary-button" type="button" hidden>返回助手补充信息</button><button id="preview-editor" class="secondary-button" type="button">预览当前内容</button><button id="save-editor" class="primary-button" type="submit">保存内容</button></div></footer>
     </form>
   </dialog>
   <dialog id="preview-dialog" class="preview-dialog" aria-labelledby="preview-title"><header class="dialog-header"><div><p class="eyebrow">CONTENT PREVIEW</p><h2 id="preview-title">内容预览</h2></div><button id="close-preview" type="button" class="secondary-button">关闭预览</button></header><div id="preview-content" class="preview-body"></div></dialog>

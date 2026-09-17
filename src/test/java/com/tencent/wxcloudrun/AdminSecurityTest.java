@@ -43,6 +43,7 @@ class AdminSecurityTest {
         assertTrue(rejected.statusCode() == 401 || rejected.statusCode() == 403, rejected.body());
       }
       assertEquals(401, call(first, "GET", "/admin/api/resources", null, null, null).statusCode());
+      assertEquals(401, call(first, "GET", "/admin/api/ai/status", null, null, null).statusCode());
       assertEquals(403, call(first, "POST", "/admin/api/session", "username=editor&password=password", null, null).statusCode());
       var anonymous = call(first, "GET", "/admin/api/session", null, null, null);
       assertEquals(200, anonymous.statusCode(), anonymous.body());
@@ -59,6 +60,8 @@ class AdminSecurityTest {
       var state = call(second, "GET", "/admin/api/session", null, after, null);
       assertTrue(data(state).path("authenticated").asBoolean(), state.body());
       assertEquals("editor", data(state).path("username").asText());
+      assertFalse(data(call(second,"GET","/admin/api/ai/status",null,after,null)).path("configured").asBoolean());
+      assertEquals(403,call(second,"POST","/admin/api/ai/draft","value=x",after,null).statusCode());
       assertEquals(403, call(second, "GET", "/api/me/card", null, after, null).statusCode());
       assertEquals(403, call(second, "POST", "/admin/api/security-test", "value=anything", after, null).statusCode());
       assertEquals(200, call(second, "POST", "/admin/api/security-test", "value=anything", after, data(state).path("csrfToken").asText()).statusCode());
@@ -139,6 +142,8 @@ class AdminSecurityTest {
   @Test
   void miniDisablesAdminAndAdminRejectsMissingCredentials() throws Exception {
     try (var app = start(url("mini"), "mini", false)) {
+      assertTrue(app.getBeansOfType(com.tencent.wxcloudrun.content.AdminAiController.class).isEmpty());
+      assertTrue(app.getBeansOfType(com.tencent.wxcloudrun.content.AdminAiService.class).isEmpty());
       var response = call(app, "GET", "/admin/api/session", null, null, null);
       assertTrue(response.statusCode() == 401 || response.statusCode() == 403, response.body());
     }
