@@ -63,10 +63,24 @@ public class ContentService {
       List<String> visible=new ArrayList<>();
       for(var entry:schema.get(audience).path("categories"))if(!entry.path("pending").asBoolean()&&!entry.path("value").asText().equals("all"))visible.add(entry.path("value").asText());
       if(!category.equals("all")&&!visible.contains(category)&&(!admin||!schema.get(audience).path("legacyCategories").findValuesAsText("value").contains(category)))throw bad("该分类暂未开放");
-      join="JOIN content_resource_view v ON v.resource_id=c.id";
-      params.put("audience",audience);where.append(" AND v.audience=:audience");
-      if(category.equals("all")){where.append(" AND v.category IN (:visibleCategories)");params.put("visibleCategories",visible);}
-      if(!category.equals("all")){where.append(" AND v.category=:category");params.put("category",category);}
+      boolean unifiedPool=!admin&&audience.equals("pool")&&category.equals("all");
+      if(unifiedPool) {
+        // EXISTS keeps one resource row even when several role columns refer to it.
+        List<String> scopes=new ArrayList<>();
+        for(String role:List.of("pool","investor","enterprise","scientist","manager")) {
+          List<String> categories=new ArrayList<>();
+          for(var entry:schema.get(role).path("categories"))if(!entry.path("pending").asBoolean()&&!entry.path("value").asText().equals("all"))categories.add(entry.path("value").asText());
+          if(categories.isEmpty())continue;
+          params.put(role+"Audience",role);params.put(role+"Categories",categories);
+          scopes.add("(v.audience=:"+role+"Audience AND v.category IN (:"+role+"Categories))");
+        }
+        where.append(" AND EXISTS (SELECT 1 FROM content_resource_view v WHERE v.resource_id=c.id AND (").append(String.join(" OR ",scopes)).append("))");
+      } else {
+        join="JOIN content_resource_view v ON v.resource_id=c.id";
+        params.put("audience",audience);where.append(" AND v.audience=:audience");
+        if(category.equals("all")){where.append(" AND v.category IN (:visibleCategories)");params.put("visibleCategories",visible);}
+        if(!category.equals("all")){where.append(" AND v.category=:category");params.put("category",category);}
+      }
       int index=0;
       for(var filter:filters) {
         String key=filter.path("key").asText();allowed.add(key);
@@ -85,7 +99,7 @@ public class ContentService {
           else where.append(" AND JSON_UNQUOTE(JSON_EXTRACT(c.payload,'").append(path).append("'))=:").append(pname);
         }
       }
-      order="v.sort_order,c.id";
+      order=unifiedPool?"c.sort_order,c.id":"v.sort_order,c.id";
     }
     if(collection.equals("policies")) {
       allowed.add("category");
