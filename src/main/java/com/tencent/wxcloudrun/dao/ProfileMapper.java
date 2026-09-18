@@ -51,6 +51,20 @@ public interface ProfileMapper {
       """)
   void savePhone(@Param("userId") String userId, @Param("phone") PhoneRow phone);
 
+  @Select("""
+      SELECT i.tag, i.saved_at FROM app_user_identity i
+      JOIN app_user u ON u.id = i.user_id WHERE u.appid = #{appid} AND u.openid = #{openid}
+      """)
+  IdentityRow findIdentityTag(@Param("appid") String appid, @Param("openid") String openid);
+
+  @Insert("""
+      INSERT INTO app_user_identity (user_id, tag, saved_at)
+      VALUES (#{userId}, #{tag}, CURRENT_TIMESTAMP(6))
+      ON DUPLICATE KEY UPDATE tag = #{tag}, saved_at = CURRENT_TIMESTAMP(6)
+      """)
+  void saveIdentityTag(@Param("userId") String userId, @Param("tag") String tag);
+
+  record IdentityRow(String tag, LocalDateTime savedAt) {}
   record PhoneRow(String phoneNumber, String countryCode) {}
   record UserRow(String id, LocalDateTime createdAt) {}
   record CardRow(String name, String phone, String company, String position, String address,

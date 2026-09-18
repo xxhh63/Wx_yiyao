@@ -47,6 +47,16 @@ public class ProfileController {
     return ApiResponse.ok(Map.of("authenticated", false));
   }
 
+  @GetMapping("/api/me/identity")
+  public ApiResponse userIdentity(HttpServletRequest request) {
+    return ApiResponse.ok(profiles.identityTag(identity.resolve(request)));
+  }
+
+  @PutMapping("/api/me/identity")
+  public ApiResponse saveUserIdentity(HttpServletRequest request, @RequestBody JsonNode body) {
+    return ApiResponse.ok(profiles.saveIdentityTag(identity.resolve(request), body));
+  }
+
   @GetMapping("/api/me/card")
   public ApiResponse card(HttpServletRequest request) {
     return ApiResponse.ok(profiles.card(identity.resolve(request)));

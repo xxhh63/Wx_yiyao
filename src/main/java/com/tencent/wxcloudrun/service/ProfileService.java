@@ -16,6 +16,8 @@ import java.util.UUID;
 
 @Service
 public class ProfileService {
+  private static final Map<String, String> IDENTITY_LABELS = Map.of(
+      "enterprise", "企业", "scientist", "科研院所", "investor", "投资人", "manager", "服务机构");
   private static final Map<String, Integer> LIMITS = Map.of(
       "name", 30, "phone", 24, "company", 80, "position", 50,
       "address", 120, "email", 100, "wechat", 50, "intro", 500);
@@ -38,6 +40,23 @@ public class ProfileService {
     var user = ensureUser(identity);
     mapper.savePhone(user.id(), phone);
     return new Session(true, user.id(), user.createdAt().toInstant(ZoneOffset.UTC));
+  }
+
+  public IdentitySnapshot identityTag(Identity identity) {
+    var row = mapper.findIdentityTag(identity.appid(), identity.openid());
+    return row == null ? new IdentitySnapshot(null, "", null)
+        : new IdentitySnapshot(row.tag(), IDENTITY_LABELS.get(row.tag()), row.savedAt().toInstant(ZoneOffset.UTC));
+  }
+
+  @Transactional
+  public IdentitySnapshot saveIdentityTag(Identity identity, JsonNode body) {
+    if (body == null || !body.isObject() || body.size() != 1 || !body.path("tag").isTextual()
+        || !IDENTITY_LABELS.containsKey(body.path("tag").textValue())) {
+      throw invalid("请单选企业、科研院所、投资人或服务机构，且只提交 tag 字段");
+    }
+    var user = ensureUser(identity);
+    mapper.saveIdentityTag(user.id(), body.get("tag").textValue());
+    return identityTag(identity);
   }
 
   public CardSnapshot card(Identity identity) {
@@ -99,6 +118,7 @@ public class ProfileService {
     return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
   }
 
+  public record IdentitySnapshot(String tag, String label, Instant savedAt) {}
   public record Session(boolean authenticated, String userId, Instant createdAt) {}
   public record CardSnapshot(int version, Map<String, String> values, Instant savedAt) {}
 }

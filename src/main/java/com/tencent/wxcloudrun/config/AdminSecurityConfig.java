@@ -43,7 +43,7 @@ public class AdminSecurityConfig {
               .requestMatchers(HttpMethod.GET, "/api/**").permitAll()
               .requestMatchers(HttpMethod.POST, "/api/auth/session").permitAll()
               .requestMatchers(HttpMethod.DELETE, "/api/auth/session").permitAll()
-              .requestMatchers(HttpMethod.PUT, "/api/me/card").permitAll()
+              .requestMatchers(HttpMethod.PUT, "/api/me/card", "/api/me/identity").permitAll()
               .requestMatchers("/api/**").denyAll().anyRequest().permitAll());
     } else {
       http.csrf(Customizer.withDefaults())

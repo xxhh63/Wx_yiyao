@@ -76,6 +76,85 @@ class ServerWechatLoginTest {
   }
 
   @Test
+  void singleIdentityIsPrivatePersistsAcrossRestartAndNeverChangesTheCard() throws Exception {
+    String url = url("identity");
+    String aliceToken;
+    JsonNode savedIdentity;
+    JsonNode savedCard;
+    HttpClient wechat = wechat();
+    try (var app = start(url, wechat, APPID)) {
+      assertEquals(401, call(app, "GET", "/api/me/identity", null, null).statusCode());
+      assertEquals(401, call(app, "PUT", "/api/me/identity", "{\"tag\":\"enterprise\"}", null).statusCode());
+      assertEquals(401, call(app, "GET", "/api/me/identity", null, null,
+          Map.of("X-WX-APPID", APPID, "X-WX-OPENID", "alice", "X-WX-SOURCE", "forged")).statusCode());
+      var alice = data(call(app, "POST", "/api/auth/session",
+          "{\"code\":\"alice-code\",\"phoneCode\":\"alice-phone\"}", null));
+      aliceToken = alice.path("accessToken").asText();
+      var emptyResponse = call(app, "GET", "/api/me/identity", null, aliceToken);
+      assertTrue(emptyResponse.headers().firstValue("Cache-Control").orElse("").contains("no-store"));
+      var empty = data(emptyResponse);
+      assertEquals(3, empty.size());
+      assertTrue(empty.path("tag").isNull());
+      assertEquals("", empty.path("label").asText());
+      assertTrue(empty.path("savedAt").isNull());
+      savedCard = data(call(app, "PUT", "/api/me/card",
+          "{\"values\":{\"name\":\"身份独立测试\",\"company\":\"科研单位\",\"phone\":\"010-12345678\"}}", aliceToken));
+      String bobToken = data(call(app, "POST", "/api/auth/session",
+          "{\"code\":\"bob-code\",\"phoneCode\":\"bob-phone\"}", null)).path("accessToken").asText();
+      for (var option : List.of(Map.entry("enterprise", "企业"), Map.entry("scientist", "科研院所"),
+          Map.entry("manager", "服务机构"), Map.entry("investor", "投资人"))) {
+        var saved = data(call(app, "PUT", "/api/me/identity", "{\"tag\":\"" + option.getKey() + "\"}", aliceToken));
+        assertEquals(3, saved.size());
+        assertEquals(option.getKey(), saved.path("tag").asText());
+        assertEquals(option.getValue(), saved.path("label").asText());
+        assertDoesNotThrow(() -> java.time.Instant.parse(saved.path("savedAt").asText()));
+        assertEquals(saved, data(call(app, "GET", "/api/me/identity", null, aliceToken)));
+        assertEquals(1, count(url, "SELECT COUNT(*) FROM app_user_identity"));
+      }
+      savedIdentity = data(call(app, "GET", "/api/me/identity", null, aliceToken));
+      assertEquals(empty, data(call(app, "GET", "/api/me/identity", null, bobToken,
+          Map.of("X-WX-OPENID", "alice"))));
+      assertEquals(400, call(app, "PUT", "/api/me/identity",
+          "{\"tag\":\"enterprise\",\"userId\":\"" + alice.path("userId").asText() + "\"}", bobToken).statusCode());
+      assertEquals(savedIdentity, data(call(app, "GET", "/api/me/identity", null, aliceToken)));
+      assertEquals(savedCard, data(call(app, "GET", "/api/me/card", null, aliceToken)));
+      assertEquals(1, count(url, "SELECT COUNT(*) FROM app_user_identity"));
+    }
+    try (var app = start(url, wechat, APPID)) {
+      assertEquals(savedIdentity, data(call(app, "GET", "/api/me/identity", null, aliceToken)));
+      assertEquals(savedCard, data(call(app, "GET", "/api/me/card", null, aliceToken)));
+      data(call(app, "DELETE", "/api/auth/session", null, aliceToken));
+      assertEquals(401, call(app, "GET", "/api/me/identity", null, aliceToken).statusCode());
+      assertEquals(401, call(app, "PUT", "/api/me/identity", "{\"tag\":\"enterprise\"}", aliceToken).statusCode());
+      String returningToken = data(call(app, "POST", "/api/auth/session",
+          "{\"code\":\"alice-returning\"}", null)).path("accessToken").asText();
+      assertEquals(savedIdentity, data(call(app, "GET", "/api/me/identity", null, returningToken)));
+    }
+  }
+
+  @Test
+  void identityRejectsMissingInvalidMultipleAndForgedFieldsWithoutChangingTheSavedTag() throws Exception {
+    String url = url("identity-validation");
+    try (var app = start(url, wechat(), APPID)) {
+      String token = data(call(app, "POST", "/api/auth/session",
+          "{\"code\":\"alice-code\",\"phoneCode\":\"alice-phone\"}", null)).path("accessToken").asText();
+      var saved = data(call(app, "PUT", "/api/me/identity", "{\"tag\":\"scientist\"}", token));
+      for (String body : List.of("null", "[]", "{}", "{\"tag\":null}", "{\"tag\":\"\"}",
+          "{\"tag\":\" \"}", "{\"tag\":42}", "{\"tag\":true}",
+          "{\"tag\":[\"enterprise\",\"investor\"]}", "{\"tags\":[\"enterprise\"]}",
+          "{\"tag\":\"enterprise,investor\"}", "{\"tag\":\"other\"}",
+          "{\"tag\":\"企业\"}", "{\"tag\":\"enterprise\",\"label\":\"投资人\"}",
+          "{\"tag\":\"enterprise\",\"userId\":\"forged\"}",
+          "{\"tag\":\"enterprise\",\"unknown\":true}")) {
+        var response = call(app, "PUT", "/api/me/identity", body, token);
+        assertEquals(400, response.statusCode(), body + " => " + response.body());
+        assertEquals(saved, data(call(app, "GET", "/api/me/identity", null, token)));
+        assertEquals(1, count(url, "SELECT COUNT(*) FROM app_user_identity"));
+      }
+    }
+  }
+
+  @Test
   void badCodesAndUpstreamFailuresNeverCreateSessionsOrExposeSecrets() throws Exception {
     HttpClient wechat = wechat();
     try (var app = start(url("errors"), wechat, APPID)) {
@@ -106,10 +185,14 @@ class ServerWechatLoginTest {
         assertEquals(1, statement.executeUpdate());
       }
       assertEquals(401, call(app, "GET", "/api/me/card", null, token).statusCode());
+      assertEquals(401, call(app, "GET", "/api/me/identity", null, token).statusCode());
+      assertEquals(401, call(app, "PUT", "/api/me/identity", "{\"tag\":\"enterprise\"}", token).statusCode());
       token = data(call(app, "POST", "/api/auth/session", "{\"code\":\"alice-code-2\"}", null)).path("accessToken").asText();
     }
     try (var app = start(url, wechat(), "wx0000000000000000")) {
       assertEquals(401, call(app, "GET", "/api/me/card", null, token).statusCode());
+      assertEquals(401, call(app, "GET", "/api/me/identity", null, token).statusCode());
+      assertEquals(401, call(app, "PUT", "/api/me/identity", "{\"tag\":\"enterprise\"}", token).statusCode());
       assertEquals(401, call(app, "DELETE", "/api/auth/session", null, token).statusCode());
     }
   }

@@ -20,6 +20,7 @@
 `.env.example` 是空凭据示例，不会由 Spring Boot 自动加载。实际配置保存在服务器 `.local/api.properties`、`.local/admin.properties`，不得提交 Git、写入小程序或复制到聊天和日志。已经迁移的业务库不要重复执行清空或覆盖导入；新增结构只执行对应增量 SQL。
 
 - [微信手机号快速验证登录](docs/wechat-phone-login.md)
+- [登录与单选身份标签](docs/user-identity.md)
 - [AI 录入助手配置与使用](docs/admin-ai-import.md)
 - [资源分类与人工编辑](docs/admin-resource-categories.md)
 - [SQL 迁移文件说明](migration/README.md)
@@ -37,6 +38,7 @@
 | POST | /api/auth/session | 微信登录，并在首次授权时绑定手机号 |
 | DELETE | /api/auth/session | 注销当前会话 |
 | GET / PUT | /api/me/card | 当前用户名片读取 / 全量保存 |
+| GET / PUT | /api/me/identity | 当前用户单选身份读取 / 覆盖保存 |
 | GET | /api/home | 主推、广告、统计、政策 |
 | GET | /api/resources、/api/catalogs/{audience} | 资源列表与分类筛选字典 |
 | GET | /api/policies、/api/institutions、/api/stats | 政策、机构、统计 |
